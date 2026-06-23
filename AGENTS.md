@@ -42,8 +42,9 @@ Current scaffold:
 
 ```
 src/
-├─ app/          layout.tsx, page.tsx (landing), globals.css   # App Router root
-└─ components/   MercuryBackground.tsx                         # WebGL liquid-mercury hero bg
+├─ app/          layout.tsx, page.tsx (landing), not-found.tsx, globals.css   # App Router root
+├─ components/   MercuryField.tsx, MercuryBlob.tsx, mercury-shaders.ts        # liquid-mercury bg
+└─ hooks/        useMercuryCanvas.ts                                          # shared WebGL setup
 public/          static assets
 docs/            implementation-plan.md
 ```
@@ -63,15 +64,15 @@ src/
 
 > Note: the plan's tree shows top-level `app/`, `lib/`, etc. — this project uses `src/`, so place everything under `src/`.
 
-## Landing page
+## Landing & 404
 
-The marketing landing lives at `src/app/page.tsx` (route `/`) — a dark, theme-locked hero: the chrome **Mercury** wordmark, a one-line promo, and a single "Get started" CTA over an animated liquid-mercury background. Key pieces:
+The marketing landing lives at `src/app/page.tsx` (route `/`) — a dark, theme-locked hero: the chrome **Mercury** wordmark, a one-line promo, and a single "Get started" CTA over an animated liquid-mercury background. The custom 404 (`src/app/not-found.tsx`) reuses the same look with a single mercury spill. Key pieces:
 
-- **`src/components/MercuryBackground.tsx`** — a `"use client"` leaf that renders the background in a raw WebGL fragment shader (mercury metaballs: drifting droplets that merge into a pool, shaded as polished chrome). No Three.js. It caps DPR, honors `prefers-reduced-motion` (one static frame), cleans up its RAF/listeners, and loses the GL context on unmount. If WebGL is unavailable, the CSS radial gradient on the parent shows instead.
+- **Mercury background** — a raw WebGL fragment shader (mercury metaballs, no Three.js). The shared plumbing lives in the **`useMercuryCanvas`** hook (`src/hooks/`): it caps DPR, honors `prefers-reduced-motion` (one static frame), and frees its RAF/listeners/GL resources on unmount (it intentionally does not force-lose the WebGL context, which would blank the canvas under Strict Mode / canvas reuse). Two thin `"use client"` leaves consume it — **`MercuryField`** (landing: droplets pooling at the bottom) and **`MercuryBlob`** (404: one morphing spill) — with the GLSL in **`mercury-shaders.ts`**. They're separate component types on purpose, so client navigation remounts them with a fresh canvas/context instead of reusing one. If WebGL is unavailable, the CSS radial gradient on the parent shows instead.
 - **`src/app/globals.css`** — the page is locked to dark (`color-scheme: dark`, no per-section flips). Reusable utilities: `.text-chrome` (metallic wordmark fill), `.glass` (frosted pill with a reduced-transparency fallback), `.cta-ring` (animated CTA halo via a registered `@property --cta-angle`), `.animate-rise` (staggered entrance). All motion collapses under `prefers-reduced-motion`.
 
-Keep the WebGL/animation work isolated in client leaves; the page itself stays a Server Component.
+Keep the WebGL/animation work isolated in client leaves; the pages themselves stay Server Components.
 
 ## Status
 
-Phase 0 (scaffold) done, plus a dark liquid-mercury marketing landing at `/` (see **Landing page** above). Next up per the plan: Phase 1 — build `src/lib/weather` (normalized types + Open-Meteo adapter) and prove an end-to-end fetch for a hardcoded location.
+Phase 0 (scaffold) done, plus a dark liquid-mercury marketing landing at `/` and a matching custom 404 (see **Landing & 404** above). Next up per the plan: Phase 1 — build `src/lib/weather` (normalized types + Open-Meteo adapter) and prove an end-to-end fetch for a hardcoded location.

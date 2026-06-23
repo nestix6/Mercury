@@ -1,12 +1,12 @@
 import Link from "next/link";
-import MercuryBackground from "@/components/MercuryBackground";
+import MercuryField from "@/components/MercuryField";
 
 export default function Home() {
   return (
     <main className="relative flex flex-1 flex-col overflow-hidden bg-[#070708] text-zinc-100">
       {/* Liquid-mercury field. CSS gradient underneath is the no-WebGL fallback. */}
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(60%_45%_at_50%_82%,#1a1d22_0%,#0b0c0f_55%,#060607_100%)]">
-        <MercuryBackground />
+        <MercuryField />
       </div>
 
       {/* Legibility scrim: soft dark wash behind the centered content. */}
