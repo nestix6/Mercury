@@ -1,36 +1,33 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Mercury
 
-## Getting Started
+A fast, clean weather app. Search a location (or use geolocation) and see current conditions, an hourly strip, and a 7-day forecast. Built with Next.js 16, React 19, TypeScript, and Tailwind CSS v4. Weather data comes from [Open-Meteo](https://open-meteo.com/).
 
-First, run the development server:
+> **Status:** early. The marketing **landing page** is built (a dark hero with an animated liquid-mercury WebGL background); the forecast app itself is in progress. See [`docs/implementation-plan.md`](docs/implementation-plan.md) for the roadmap and [`AGENTS.md`](AGENTS.md) for architecture and conventions.
+
+## Getting started
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) to see the landing page.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Scripts
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run dev      # dev server (Turbopack)
+npm run build    # production build
+npm run start    # serve the production build
+npm run lint     # ESLint (eslint-config-next)
+```
 
-## Learn More
+## The landing page
 
-To learn more about Next.js, take a look at the following resources:
+The landing (`src/app/page.tsx`) is a dark, theme-locked hero: the chrome "Mercury" wordmark, a short promo line, and a "Get started" call to action, set over a slowly moving liquid-mercury background.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+That background is a hand-built WebGL fragment shader in [`src/components/MercuryBackground.tsx`](src/components/MercuryBackground.tsx) — mercury-style metaballs (drifting droplets that merge into a pool, shaded like polished chrome). It renders at reduced resolution with a capped device-pixel-ratio, honors `prefers-reduced-motion` (falling back to a single static frame), and degrades to a CSS gradient where WebGL is unavailable. The page itself is a Server Component; only the background is a `"use client"` leaf.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Deploy
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Deploys on [Vercel](https://vercel.com/new). See the [Next.js deployment docs](https://nextjs.org/docs/app/building-your-application/deploying) for details.
