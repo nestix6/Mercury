@@ -22,6 +22,11 @@ npm run lint     # ESLint (eslint-config-next: core-web-vitals + typescript)
 
 There is no test runner configured yet. If you add tests (see plan §11), document the command here.
 
+## Git
+
+- **Commit straight to `main` by default.** Only work on another branch when explicitly pointed at one or asked to create one.
+- **Commit, don't push.** Make the commit locally and stop there; only push when explicitly asked.
+
 ## Conventions
 
 - **`src/` directory.** All app code lives under `src/`. Import alias `@/*` → `./src/*` (e.g. `@/lib/weather`, `@/components/CurrentConditions`). Use it instead of long relative paths.
