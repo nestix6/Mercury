@@ -18,11 +18,11 @@ export default function Home() {
           Live weather, refined
         </p>
 
-        <h1 className="text-chrome animate-rise text-8xl leading-[0.95] font-semibold tracking-tight [animation-delay:140ms] sm:text-9xl md:text-[10rem] lg:text-[11rem]">
+        <h1 className="text-chrome animate-rise pb-3 text-8xl leading-[1.1] font-semibold tracking-tight [animation-delay:140ms] sm:text-9xl md:text-[11rem] lg:text-[12.5rem]">
           Mercury
         </h1>
 
-        <p className="animate-rise mt-8 max-w-2xl text-balance text-xl leading-relaxed text-zinc-100/90 [animation-delay:240ms] sm:text-2xl">
+        <p className="animate-rise mt-4 max-w-2xl text-balance text-lg leading-relaxed text-zinc-100/90 [animation-delay:240ms] sm:text-xl">
           Current conditions, an hourly view, and a seven-day forecast for
           anywhere. Fast, calm, and accurate.
         </p>
@@ -30,7 +30,7 @@ export default function Home() {
         <div className="animate-rise mt-12 [animation-delay:340ms]">
           <div className="cta-ring inline-flex rounded-full p-5">
             <Link
-              href="/"
+              href="/weather"
               className="group relative z-10 inline-flex h-14 items-center justify-center rounded-full bg-gradient-to-b from-white via-zinc-100 to-zinc-300 px-8 text-base font-semibold text-zinc-950 shadow-[inset_0_1px_0_rgba(255,255,255,0.85),0_8px_30px_rgba(0,0,0,0.45)] transition-[transform,filter] duration-200 hover:brightness-[1.04] active:translate-y-px active:scale-[0.985] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-200"
             >
               Get started
