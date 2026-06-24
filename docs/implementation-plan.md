@@ -11,22 +11,17 @@ Mercury is a web app that shows current conditions, an hourly view, and a multi-
 ## 2. Goals & Non-Goals
 
 **Goals**
+
 - Current conditions + hourly + 7-day forecast for any searchable location
 - Geolocation ("use my location") with a graceful fallback to manual search
 - Saved/favorite locations the user can switch between
 - Imperial/metric toggle that persists
 - Fast first paint and minimal layout shift
 
-**Non-Goals (for v1)**
-- User accounts / auth (favorites can live in local storage first)
-- Severe-weather push notifications
-- Native mobile apps
-- Historical weather data and charts beyond the basic forecast
-
 ## 3. Tech Stack
 
 | Layer | Choice | Notes |
-|---|---|---|
+| --- | --- | --- |
 | Framework | Next.js (App Router) | Server Components for data fetching, Route Handlers for any proxying |
 | Language | TypeScript | Strict mode on |
 | Styling | Tailwind CSS | Fast iteration; pairs well with a small component set |
@@ -40,7 +35,7 @@ Mercury is a web app that shows current conditions, an hourly view, and a multi-
 Pick one provider to start; the app should wrap it behind a small internal interface so it can be swapped later.
 
 | Provider | API key needed | Free tier | Notes |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | **Open-Meteo** | No | Generous, no key | Great default for a starter project; forecast + geocoding endpoints |
 | OpenWeatherMap | Yes | Yes (rate-limited) | Very common, lots of docs |
 | WeatherAPI.com | Yes | Yes | Clean JSON, good forecast detail |
@@ -48,7 +43,7 @@ Pick one provider to start; the app should wrap it behind a small internal inter
 
 **Recommendation:** start with **Open-Meteo** — no API key, no billing setup, and it has a companion geocoding API for the location search box. Move to a keyed provider later only if you need data it doesn't offer.
 
-Wrap whichever provider you choose in `lib/weather/` so the rest of the app talks to *your* types, not the provider's response shape.
+Wrap whichever provider you choose in `lib/weather/` so the rest of the app talks to _your_ types, not the provider's response shape.
 
 ## 5. Architecture
 
@@ -75,6 +70,7 @@ Next.js App Router
 ## 6. Feature Breakdown
 
 **MVP**
+
 - Location search (city name → coordinates via geocoding)
 - "Use my location" via the browser Geolocation API
 - Current conditions card: temp, feels-like, condition, high/low, wind, humidity
@@ -83,15 +79,11 @@ Next.js App Router
 - Unit toggle (°C/°F, km/h vs mph) that persists
 
 **Phase 2**
+
 - Favorite locations, switchable from a dropdown or chips
 - Sunrise/sunset, UV index, "feels like" detail
 - Light/dark theme that follows system preference
 - Loading skeletons and offline/error states
-
-**Later**
-- Severe-weather alerts (where the provider supports them)
-- Simple charts (temperature/precipitation over the week)
-- Optional accounts to sync favorites across devices
 
 ## 7. Suggested Project Structure
 
@@ -174,5 +166,3 @@ Commit a `.env.example` with the variable names but no values. If you start with
 - Localization (units, language, date formats)
 
 ---
-
-*Mercury v1 scope: search a place, see the weather, switch units, save favorites. Everything else is a later phase.*

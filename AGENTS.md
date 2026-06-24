@@ -1,6 +1,8 @@
 # Mercury
 
-A fast, clean weather app. Search a location (or use geolocation) and see current conditions, an hourly strip, and a 7-day forecast. Priorities: speed, a calm/legible UI, and accurate data. See `docs/implementation-plan.md` for the full plan, phases, and scope.
+A fast, clean weather app. Search a location (or use geolocation) and see current conditions, an hourly strip, and a 7-day forecast. Priorities: speed, a calm/legible UI, and accurate data.
+
+> **Read `docs/implementation-plan.md` at the start of each session.** It's the source of truth for scope, phases, the data model, and key decisions — this file only summarizes it.
 
 ## Stack
 

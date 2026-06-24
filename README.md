@@ -41,7 +41,3 @@ src/
 ```
 
 Both backgrounds are hand-built WebGL fragment shaders (mercury metaballs). `useMercuryCanvas` holds the plumbing; the two components are thin client leaves. They render at reduced resolution with a capped device-pixel-ratio, honor `prefers-reduced-motion` (single static frame), and fall back to a CSS gradient where WebGL is unavailable. The pages stay Server Components.
-
-## Deploy
-
-Deploys on [Vercel](https://vercel.com/new). See the [Next.js deployment docs](https://nextjs.org/docs/app/building-your-application/deploying) for details.
