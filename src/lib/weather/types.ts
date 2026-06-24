@@ -2,8 +2,9 @@
  * Normalized weather types — the shape the rest of the app talks to.
  *
  * These intentionally describe *our* model, not any provider's response. The
- * Open-Meteo adapter (Phase 1) will map into these; for now the UI runs on the
- * mock snapshot in `./mock`. Keep provider specifics out of this file.
+ * Open-Meteo adapter (`./provider`) maps into these at the boundary, and the
+ * sample snapshot in `./mock` is shaped the same. Keep provider specifics out
+ * of this file.
  */
 
 export type ConditionCode =

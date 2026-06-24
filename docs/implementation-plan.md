@@ -138,6 +138,7 @@ Ship to Vercel, set environment variables, verify caching/revalidation in produc
 ## 9. Key Technical Decisions
 
 - **Caching:** forecasts don't need to be real-time. Revalidate on an interval (e.g. every 10–15 minutes) so you stay well inside provider rate limits while keeping data fresh.
+- **Rate-limit outbound calls:** treat caching and cache-key reuse as the primary limiter, backed by an explicit per-instance call cap as a circuit breaker — so unchanged data is never refetched and a runaway can't exhaust a provider's free tier. Best-effort by design; a global hard ceiling (a shared store) is only worth it at scale.
 - **Keep secrets server-side:** if your provider uses a key, fetch from a Server Component or Route Handler — never expose the key in client code.
 - **Normalize early:** convert provider responses to your own types at the boundary so swapping providers later is a one-file change.
 - **Geolocation is permission-gated:** always offer manual search as the primary path; treat "use my location" as an enhancement.

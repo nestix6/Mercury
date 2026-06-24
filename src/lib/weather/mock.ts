@@ -1,6 +1,7 @@
 /**
- * Placeholder weather snapshot. Stands in for the Open-Meteo adapter until the
- * data layer (Phase 1) lands. Values are made up but internally consistent
+ * Sample weather snapshot used as a graceful fallback: the weather page renders
+ * this (flagged "sample data") when Open-Meteo errors or a searched place can't
+ * be found, so the UI never breaks. Values are made up but internally consistent
  * (Prague, a changeable late-June day). Everything is metric; the UI converts.
  */
 

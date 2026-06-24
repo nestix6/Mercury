@@ -1,5 +1,6 @@
-// Route-level skeleton: mirrors the weather layout's shape so first paint has
-// no layout shift once the forecast fetch lands (Phase 1). Shapes only, no spinner.
+// Route-level skeleton shown while the Server Component awaits the Open-Meteo
+// fetch. Mirrors the weather layout's shape so there's no layout shift when the
+// forecast resolves. Shapes only, no spinner.
 
 function Block({ className = "" }: { className?: string }) {
   return <div className={`animate-pulse rounded-3xl bg-white/5 ${className}`} />;

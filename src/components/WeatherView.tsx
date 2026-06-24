@@ -1,24 +1,62 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { WarningCircle } from "@phosphor-icons/react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { CurrentConditions } from "@/components/CurrentConditions";
 import { DailyForecast } from "@/components/DailyForecast";
 import { DetailsGrid } from "@/components/DetailsGrid";
 import { HourlyStrip } from "@/components/HourlyStrip";
 import { LocationSearch } from "@/components/LocationSearch";
 import { UnitToggle } from "@/components/UnitToggle";
+import { useGeolocation, type Coords } from "@/hooks/useGeolocation";
 import type { Units, WeatherSnapshot } from "@/lib/weather/types";
 
 /**
  * Client shell for the weather view. Owns the unit toggle (presentation only)
  * and composes the forecast sections. The Server Component page hands it a
- * normalized snapshot — today that's mock data, later the Open-Meteo adapter.
+ * normalized snapshot from the Open-Meteo adapter; `source` flags when it had to
+ * fall back to the sample snapshot (provider unreachable vs. place not found) so
+ * the disclaimer can stay honest. When `autoLocate` is set (the bare default
+ * view) it offers geolocation on mount and, if granted, navigates to the
+ * coords-based view.
  */
-export function WeatherView({ data }: { data: WeatherSnapshot }) {
+export function WeatherView({
+  data,
+  source = "live",
+  autoLocate = false,
+}: {
+  data: WeatherSnapshot;
+  source?: "live" | "offline" | "missing";
+  autoLocate?: boolean;
+}) {
   const [units, setUnits] = useState<Units>("metric");
   const [query, setQuery] = useState("");
+  const router = useRouter();
+  const { status, locate } = useGeolocation();
   const { location, current, hourly, daily } = data;
+
+  const goToCoords = useCallback(
+    (coords: Coords, mode: "push" | "replace" = "push") => {
+      // 2 dp (~1.1 km) is plenty for a forecast and keeps a precise home
+      // location out of the URL/history; the server rounds again defensively.
+      const url = `/weather?lat=${coords.latitude.toFixed(
+        2,
+      )}&lon=${coords.longitude.toFixed(2)}`;
+      if (mode === "replace") router.replace(url);
+      else router.push(url);
+    },
+    [router],
+  );
+
+  // Default view: prompt for location once on mount. Granting replaces this
+  // entry (no Prague↔location back-button bounce); denying just stays on Prague.
+  useEffect(() => {
+    if (autoLocate) locate((coords) => goToCoords(coords, "replace"));
+  }, [autoLocate, locate, goToCoords]);
+
+  const handleUseLocation = () => locate((coords) => goToCoords(coords, "push"));
 
   return (
     <main className="relative flex flex-1 flex-col text-zinc-100">
@@ -39,12 +77,22 @@ export function WeatherView({ data }: { data: WeatherSnapshot }) {
                 Mercury
               </Link>
               <div className="hidden min-w-0 flex-1 sm:block">
-                <LocationSearch value={query} onChange={setQuery} />
+                <LocationSearch
+                  value={query}
+                  onChange={setQuery}
+                  onUseLocation={handleUseLocation}
+                  locating={status === "locating"}
+                />
               </div>
               <UnitToggle value={units} onChange={setUnits} />
             </div>
             <div className="mt-3 sm:hidden">
-              <LocationSearch value={query} onChange={setQuery} />
+              <LocationSearch
+                value={query}
+                onChange={setQuery}
+                onUseLocation={handleUseLocation}
+                locating={status === "locating"}
+              />
             </div>
           </nav>
         </div>
@@ -63,9 +111,45 @@ export function WeatherView({ data }: { data: WeatherSnapshot }) {
         </div>
       </div>
 
+      {source !== "live" ? (
+        <div className="mx-auto w-full max-w-5xl px-5 pb-6 sm:px-8">
+          <div
+            role="status"
+            className="flex items-start gap-2.5 rounded-2xl border border-amber-400/20 bg-amber-400/[0.08] px-4 py-3 text-sm text-amber-100/90"
+          >
+            <WarningCircle
+              weight="fill"
+              className="mt-0.5 size-5 shrink-0 text-amber-300/90"
+              aria-hidden="true"
+            />
+            <p>
+              {source === "missing"
+                ? "We couldn't find that place. "
+                : "Live weather is out of reach right now — Open-Meteo couldn't be loaded. "}
+              The forecast below is{" "}
+              <span className="font-medium text-amber-50">
+                sample data, not real conditions
+              </span>
+              .
+            </p>
+          </div>
+        </div>
+      ) : null}
+
       <footer className="mx-auto flex w-full max-w-5xl items-center justify-between px-5 pb-8 text-xs text-zinc-500 sm:px-8">
         <span>&copy; 2026 Mercury</span>
-        <span>Showing sample data</span>
+        {source !== "live" ? (
+          <span>Showing sample data</span>
+        ) : (
+          <a
+            href="https://open-meteo.com/"
+            target="_blank"
+            rel="noreferrer"
+            className="transition-colors hover:text-zinc-300"
+          >
+            Weather data by Open-Meteo
+          </a>
+        )}
       </footer>
     </main>
   );
