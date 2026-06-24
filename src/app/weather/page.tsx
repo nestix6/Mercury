@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 import { WeatherView } from "@/components/WeatherView";
 import { reverseGeocode } from "@/lib/geo/reverse";
+import { parseUnits, UNITS_COOKIE } from "@/lib/units";
 import { getWeatherByCoords, getWeatherByQuery } from "@/lib/weather";
 import { MOCK_WEATHER } from "@/lib/weather/mock";
 
@@ -63,6 +65,11 @@ export default async function WeatherPage({
   const coords = readCoords(params);
   const query = readParam(params.q)?.trim();
 
+  // Read the persisted unit choice server-side so the first paint already shows
+  // the right unit (no °C→°F flash). Defaults to metric on a fresh visitor.
+  const cookieStore = await cookies();
+  const initialUnits = parseUnits(cookieStore.get(UNITS_COOKIE)?.value) ?? "metric";
+
   let data = MOCK_WEATHER;
   // "offline" = provider unreachable; "missing" = a searched place wasn't found.
   // The view shows a different disclaimer for each so the fallback isn't mistaken
@@ -92,5 +99,12 @@ export default async function WeatherPage({
     // Network/provider error — keep the sample fallback ("offline").
   }
 
-  return <WeatherView data={data} source={source} autoLocate={autoLocate} />;
+  return (
+    <WeatherView
+      data={data}
+      source={source}
+      autoLocate={autoLocate}
+      initialUnits={initialUnits}
+    />
+  );
 }

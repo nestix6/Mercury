@@ -69,7 +69,7 @@ weather/page.tsx (Server Component)
 
 - **Normalize at the boundary, still.** Everything provider-specific (URLs, WMO codes, response shape) lives in `lib/weather` and `lib/geo`; swapping providers is a one-module change and the UI is untouched.
 - **Caching.** Forecasts revalidate every ~15 min; geocoding and reverse geocoding cache ~24 h, so unchanged data is served from cache rather than refetched. Call-volume hardening (cache-key hygiene + circuit breakers) is Phase 5.
-- **Units are still a render concern.** Live data is metric; `UnitToggle` + `lib/format.ts` convert on the way to the screen. Persisting the choice is the next step.
+- **Units are still a render concern.** Live data is metric; `UnitToggle` + `lib/format.ts` convert on the way to the screen. Persisting the choice lands in Phase 6.
 
 ## Phase 5 — Caching & rate limiting
 
@@ -87,3 +87,10 @@ Tightening the outbound-call surface so unchanged data is never refetched and a 
 - **Query strings are normalized** (trim, lowercase, collapse whitespace) so `"Prague"`, `"prague"`, and `"  Prague  "` share one geocoding entry.
 
 **Honest limits.** The memo and counters are per-instance and reset on cold start — best-effort on serverless. The durable layer is Next's cache; a true global hard ceiling would need a shared store (e.g. Vercel KV), deliberately left out as unnecessary at current scale. Ceilings are set generously (well under Open-Meteo's free 600/min · 5000/hr) so they never trip in normal use — they only catch abuse.
+
+## Phase 6 — Persisted units & geolocation feedback
+
+Two small quality fixes so the app remembers your preference and never fails silently.
+
+- **Persisted unit choice.** The °C/°F toggle was plain client state, so it reset on every reload or navigation. It's now stored in a cookie. The decision to use a cookie (not `localStorage`) is deliberate: the Server Component reads it (`next/headers` → `cookies()`), so the very first paint already renders the saved unit — no flash of °C before flipping to °F. `lib/units.ts` holds the cookie name + a `parseUnits` narrower (a plain module, so the *server* page can call it — a `"use client"` export can't be invoked server-side), and `hooks/useUnits.ts` seeds from that server value and writes the cookie back on change.
+- **Geolocation feedback.** `useGeolocation` already tracked `denied` / `unavailable` / `error`, but the view only read `"locating"`, so a denied prompt just stopped the spinner and silently stayed on Prague. `WeatherView` now maps those states to a short inline hint under the nav (`role="status"`) — telling the user to search or re-enable location — so the auto-prompt on the default view degrades visibly.

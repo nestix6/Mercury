@@ -42,7 +42,7 @@ If a request is ambiguous or you're uncertain what the user is going for, ask a 
 - **`src/` directory.** All app code lives under `src/`. Import alias `@/*` → `./src/*` (e.g. `@/lib/weather`, `@/components/CurrentConditions`). Use it instead of long relative paths.
 - **Server Components by default.** Do the forecast fetch in Server Components so the provider response stays off the client bundle and caching is centralized. Add `"use client"` only for interactive pieces (unit toggle, search box, favorites).
 - **Normalize at the boundary.** The rest of the app talks to _our_ types, never the provider's response shape. All Open-Meteo specifics stay inside `src/lib/weather/`; swapping providers should be a one-file change.
-- **Keep secrets server-side.** Open-Meteo needs no key, but if a keyed provider is ever added, fetch only from a Server Component or a Route Handler (`src/app/api/.../route.ts`) — never ship a key to the browser. Commit a `.env.example` (names, no values).
+- **Keep secrets server-side.** Open-Meteo and BigDataCloud need no keys, so there's no `.env.example` today (an empty one would be noise). If a keyed provider is ever added, fetch only from a Server Component or a Route Handler (`src/app/api/.../route.ts`) — never ship a key to the browser — and add a `.env.example` (names, no values) at that point.
 - **Caching & call discipline:** every outbound call goes through `src/lib/outbound.ts` (`cachedFetch` + multi-window `createLimiter`). Layers, cheapest first: Next `revalidate` (forecast ~15 min; geocoding + reverse geocoding ~24 h) → a per-instance memo so repeats skip the fetch → a circuit-breaker cap charged **only on a cache miss**, so it limits upstream calls, not cache hits. Maximize cache reuse by collapsing keys (round coords to ~1 km, normalize query strings). Caps are per-instance/best-effort on serverless — a global ceiling would need a shared store (Vercel KV); not worth it at current scale. Free tiers aren't guaranteed; stay conservative.
 - **Geolocation is permission-gated.** Manual search is the primary path; "use my location" is an enhancement that degrades gracefully (granted / denied / unavailable). The browser API is client-only, so coords round-trip through the URL (`/weather?lat&lon`) for the server to fetch — never fetch the provider from the browser.
 
@@ -69,13 +69,14 @@ src/
 │  │            wmo.ts (WMO code → condition), types.ts (normalized model), mock.ts (sample fallback)
 │  ├─ geo/      reverse.ts               # coords → place name (BigDataCloud), cached + rate-limited
 │  ├─ outbound.ts                        # shared cachedFetch + multi-window rate limiter (all 3 APIs)
-│  └─ format.ts                          # temp/wind/visibility/pressure + unit conversion
-└─ hooks/  useMercuryCanvas.ts (WebGL setup), useGeolocation.ts (permission-gated coords)
+│  ├─ format.ts                          # temp/wind/visibility/pressure + unit conversion
+│  └─ units.ts                           # unit cookie name + parser (shared by server + client)
+└─ hooks/  useMercuryCanvas.ts (WebGL setup), useGeolocation.ts (permission-gated coords), useUnits.ts (cookie-persisted °C/°F)
 public/   static assets
 docs/     implementation-plan.md, documentation.md
 ```
 
-Still to land (per the plan): `FavoritesBar` + a favorites store, and a `useUnits` hook to persist the °C/°F choice. A Route Handler (`app/api/.../route.ts`) is only needed if a keyed provider is ever added — Open-Meteo and BigDataCloud need none.
+Still to land (per the plan): the first tests (formatters + adapter). Favorites/saved locations were considered and **dropped** (out of scope) — ignore the `FavoritesBar` references in the plan. A Route Handler (`app/api/.../route.ts`) is only needed if a keyed provider is ever added — Open-Meteo and BigDataCloud need none.
 
 > Note: the plan's tree shows top-level `app/`, `lib/`, etc. — this project uses `src/`, so place everything under `src/`.
 
@@ -96,7 +97,7 @@ The main app view lives at `src/app/weather/page.tsx` (route `/weather`). The Se
 - **`DetailsGrid`** — 8 liquid-glass stat tiles (feels-like, wind, humidity, UV, visibility, pressure, sunrise, sunset).
 - **`HourlyStrip`** — horizontal scroll-snap of the next 24 hours.
 - **`DailyForecast`** — 7 rows with per-day temperature range bars scaled to the week's min/max.
-- **`LocationSearch`** — submitting navigates to `/weather?q=…`; the pin button runs the `useGeolocation` flow (owned by `WeatherView`) and navigates to `/weather?lat&lon` on success. `UnitToggle` drives live °C/°F conversion (not yet persisted).
+- **`LocationSearch`** — submitting navigates to `/weather?q=…`; the pin button runs the `useGeolocation` flow (owned by `WeatherView`) and navigates to `/weather?lat&lon` on success. A denied/unavailable/failed geolocation attempt shows an inline hint under the nav instead of failing silently. `UnitToggle` drives live °C/°F conversion, persisted in a cookie (`useUnits`) and read server-side so the first paint already shows the saved unit (no flash).
 
 Data flow: `page.tsx` calls `getWeatherByQuery` / `getWeatherByCoords` from `src/lib/weather` (public interface in `index.ts`; the Open-Meteo adapter + normalization in `provider.ts`; WMO weather-code → our `Condition` in `wmo.ts`). The "use my location" path also calls `reverseGeocode` from `src/lib/geo` for the place name. Models + formatting: `types.ts` (normalized model), `mock.ts` (sample fallback, same shape), `format.ts` (temp/wind/visibility/pressure + metric/imperial). Icons come from Phosphor via **`WeatherIcon`** (condition + day/night → one glyph). Numbers render in Geist Mono; the rest is Bricolage Grotesque.
 
@@ -114,5 +115,6 @@ Done:
 - **Location search** (geocoded via `?q=`) and **"use my location"** (auto-prompt on the default view; `?lat&lon` → forecast + BigDataCloud reverse geocode in `src/lib/geo/reverse.ts`, rate-limited).
 - **Graceful fallback:** sample snapshot + an honest disclaimer when the provider is unreachable (`offline`) or a place isn't found (`missing`).
 - **Caching & rate limiting** (`src/lib/outbound.ts`): all three outbound calls share `cachedFetch` (Next revalidate + per-instance memo) and a multi-window `createLimiter` circuit breaker charged only on cache misses; cache keys collapsed via coord rounding + query normalization.
+- **Persisted units + geolocation feedback:** the °C/°F choice is stored in a cookie (`useUnits` + `src/lib/units.ts`) and read by the Server Component, so the first paint matches the saved unit with no flash; a denied/unavailable/failed geolocation attempt now surfaces an inline hint instead of silently staying on Prague.
 
-Next per the plan: persist the unit choice (a `useUnits` hook), add favorite locations + a `FavoritesBar`, richer denied/unavailable geolocation feedback, and the first tests (formatters + adapter).
+Next per the plan: the first tests (formatters + adapter), and search disambiguation (a results dropdown wiring the already-built `searchLocations`). Favorites/saved locations are out of scope (dropped).

@@ -11,7 +11,22 @@ import { HourlyStrip } from "@/components/HourlyStrip";
 import { LocationSearch } from "@/components/LocationSearch";
 import { UnitToggle } from "@/components/UnitToggle";
 import { useGeolocation, type Coords } from "@/hooks/useGeolocation";
+import { useUnits } from "@/hooks/useUnits";
 import type { Units, WeatherSnapshot } from "@/lib/weather/types";
+
+/** Inline guidance when geolocation can't deliver coordinates. */
+function geoHintFor(status: string): string | null {
+  switch (status) {
+    case "denied":
+      return "Location access is blocked. Search for a place, or allow location for this site in your browser settings.";
+    case "unavailable":
+      return "Location isn't available on this device — try searching for a place instead.";
+    case "error":
+      return "Couldn't get your location. Try again, or search for a place instead.";
+    default:
+      return null;
+  }
+}
 
 /**
  * Client shell for the weather view. Owns the unit toggle (presentation only)
@@ -20,22 +35,26 @@ import type { Units, WeatherSnapshot } from "@/lib/weather/types";
  * fall back to the sample snapshot (provider unreachable vs. place not found) so
  * the disclaimer can stay honest. When `autoLocate` is set (the bare default
  * view) it offers geolocation on mount and, if granted, navigates to the
- * coords-based view.
+ * coords-based view. `initialUnits` is the cookie-persisted °C/°F choice the
+ * server read, so the first paint already shows the right unit.
  */
 export function WeatherView({
   data,
   source = "live",
   autoLocate = false,
+  initialUnits = "metric",
 }: {
   data: WeatherSnapshot;
   source?: "live" | "offline" | "missing";
   autoLocate?: boolean;
+  initialUnits?: Units;
 }) {
-  const [units, setUnits] = useState<Units>("metric");
+  const [units, setUnits] = useUnits(initialUnits);
   const [query, setQuery] = useState("");
   const router = useRouter();
   const { status, locate } = useGeolocation();
   const { location, current, hourly, daily } = data;
+  const geoHint = geoHintFor(status);
 
   const goToCoords = useCallback(
     (coords: Coords, mode: "push" | "replace" = "push") => {
@@ -95,6 +114,20 @@ export function WeatherView({
               />
             </div>
           </nav>
+
+          {geoHint ? (
+            <p
+              role="status"
+              className="mt-2 flex items-center gap-1.5 px-1 text-xs text-amber-200/80"
+            >
+              <WarningCircle
+                weight="fill"
+                className="size-4 shrink-0 text-amber-300/80"
+                aria-hidden="true"
+              />
+              {geoHint}
+            </p>
+          ) : null}
         </div>
       </header>
 
