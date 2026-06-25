@@ -77,6 +77,8 @@ export const MOCK_WEATHER: WeatherSnapshot = {
     name: "Prague",
     region: "Czechia",
     localTime: "Wednesday 24 June, 14:08",
+    latitude: 50.09,
+    longitude: 14.42,
   },
   current: {
     temperature: 22,

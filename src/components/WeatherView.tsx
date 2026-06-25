@@ -13,6 +13,7 @@ import { UnitToggle } from "@/components/UnitToggle";
 import { useGeolocation, type Coords } from "@/hooks/useGeolocation";
 import { useLocationSearch } from "@/hooks/useLocationSearch";
 import { useUnits } from "@/hooks/useUnits";
+import { writeGeoAsked, writePlace } from "@/lib/location-store";
 import type { LocationSuggestion } from "@/lib/weather";
 import type { Units, WeatherSnapshot } from "@/lib/weather/types";
 
@@ -38,17 +39,21 @@ function geoHintFor(status: string): string | null {
  * the disclaimer can stay honest. When `autoLocate` is set (the bare default
  * view) it offers geolocation on mount and, if granted, navigates to the
  * coords-based view. `initialUnits` is the cookie-persisted °C/°F choice the
- * server read, so the first paint already shows the right unit.
+ * server read, so the first paint already shows the right unit. When `remember`
+ * is set (any user-resolved live view) it persists the location so a return
+ * visit restores it instead of re-prompting (3B).
  */
 export function WeatherView({
   data,
   source = "live",
   autoLocate = false,
+  remember = false,
   initialUnits = "metric",
 }: {
   data: WeatherSnapshot;
   source?: "live" | "offline" | "missing";
   autoLocate?: boolean;
+  remember?: boolean;
   initialUnits?: Units;
 }) {
   const [units, setUnits] = useUnits(initialUnits);
@@ -93,6 +98,28 @@ export function WeatherView({
   useEffect(() => {
     if (autoLocate) locate((coords) => goToCoords(coords, "replace"));
   }, [autoLocate, locate, goToCoords]);
+
+  // Remember any user-resolved live location so a return visit restores it
+  // instead of re-prompting (3B). The server reads this cookie on the next bare
+  // `/weather`; we never store the Prague fallback (gated by `remember`).
+  useEffect(() => {
+    if (remember && source === "live") {
+      writePlace({
+        lat: location.latitude,
+        lon: location.longitude,
+        name: location.name,
+        region: location.region,
+      });
+    }
+  }, [remember, source, location]);
+
+  // The auto-prompt was answered without a usable location — record it so we
+  // stop auto-prompting on future visits (the pin button still works).
+  useEffect(() => {
+    if (status === "denied" || status === "unavailable" || status === "error") {
+      writeGeoAsked();
+    }
+  }, [status]);
 
   const handleUseLocation = () => locate((coords) => goToCoords(coords, "push"));
 

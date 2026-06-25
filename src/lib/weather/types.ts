@@ -67,6 +67,9 @@ export interface WeatherLocation {
   region: string;
   /** Pre-formatted local timestamp, e.g. "Wednesday 24 June, 14:08". */
   localTime: string;
+  /** Resolved coordinates (rounded ~1.1 km), so a live view can be remembered. */
+  latitude: number;
+  longitude: number;
 }
 
 export interface WeatherSnapshot {

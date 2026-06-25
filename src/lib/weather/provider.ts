@@ -266,12 +266,14 @@ async function fetchForecast(
   });
   if (!data) throw new Error("Open-Meteo forecast rate limit reached");
 
-  return normalize(data, label);
+  return normalize(data, label, roundCoord(latitude), roundCoord(longitude));
 }
 
 function normalize(
   data: ForecastResponse,
   label: PlaceLabel | null,
+  latitude: number,
+  longitude: number,
 ): WeatherSnapshot {
   const { current, hourly, daily } = data;
 
@@ -289,6 +291,8 @@ function normalize(
     name: label?.name ?? "My location",
     region: label?.region || data.timezone,
     localTime: fullLocalTime(current.time),
+    latitude,
+    longitude,
   };
 
   const conditions: CurrentConditions = {

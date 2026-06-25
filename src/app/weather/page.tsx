@@ -2,6 +2,12 @@ import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { WeatherView } from "@/components/WeatherView";
 import { reverseGeocode } from "@/lib/geo/reverse";
+import {
+  GEO_ASKED_COOKIE,
+  parsePlace,
+  PLACE_COOKIE,
+  type StoredPlace,
+} from "@/lib/location-store";
 import { parseUnits, UNITS_COOKIE } from "@/lib/units";
 import { getWeatherByCoords, getWeatherByQuery } from "@/lib/weather";
 import { MOCK_WEATHER } from "@/lib/weather/mock";
@@ -54,14 +60,20 @@ export async function generateMetadata({
   }
 
   const q = readParam(params.q)?.trim();
+  if (!q) {
+    // Bare view: a remembered location is restored, so title it accordingly.
+    const stored = parsePlace((await cookies()).get(PLACE_COOKIE)?.value);
+    if (stored) return { title: `${stored.name} · Mercury`, description };
+  }
   const name = q ? q.charAt(0).toUpperCase() + q.slice(1) : DEFAULT_QUERY;
   return { title: `${name} · Mercury`, description };
 }
 
-// Server Component. Three entry points:
-//   • ?lat&lon  → "use my location": forecast by coords + reverse-geocoded label
+// Server Component. Entry points:
+//   • ?lat&lon  → "use my location" / a picked search result (coords + label)
 //   • ?q        → a searched place
-//   • neither   → default (Prague), and the client offers geolocation on mount
+//   • neither   → a remembered location (3B), else the Prague default with a
+//                 one-time geolocation prompt on mount
 // Any provider failure falls back to the sample snapshot so the page always renders.
 export default async function WeatherPage({
   searchParams,
@@ -72,19 +84,29 @@ export default async function WeatherPage({
   const coords = readCoords(params);
   const query = readParam(params.q)?.trim();
 
+  const cookieStore = await cookies();
   // Read the persisted unit choice server-side so the first paint already shows
   // the right unit (no °C→°F flash). Defaults to metric on a fresh visitor.
-  const cookieStore = await cookies();
   const initialUnits = parseUnits(cookieStore.get(UNITS_COOKIE)?.value) ?? "metric";
+
+  // On the bare view, restore the last remembered location (3B) instead of
+  // Prague, and never re-prompt for geolocation once we've already asked.
+  const isBare = !coords && !query;
+  const restored: StoredPlace | null = isBare
+    ? parsePlace(cookieStore.get(PLACE_COOKIE)?.value)
+    : null;
+  const geoAsked = cookieStore.get(GEO_ASKED_COOKIE)?.value === "1";
+  // Prompt for location only on a first-ever bare visit: nothing remembered and
+  // we haven't asked before. Otherwise the pin button is the way in.
+  const autoLocate = isBare && !restored && !geoAsked;
 
   let data = MOCK_WEATHER;
   // "offline" = provider unreachable; "missing" = a searched place wasn't found.
   // The view shows a different disclaimer for each so the fallback isn't mistaken
   // for real data.
   let source: "live" | "offline" | "missing" = "offline";
-  // Only the bare default view auto-prompts for location — never after the user
-  // has already searched or shared coordinates.
-  const autoLocate = !coords && !query;
+  // Persist the resolved location for next time — but never the Prague fallback.
+  let remember = false;
 
   try {
     if (coords) {
@@ -97,11 +119,22 @@ export default async function WeatherPage({
         : await reverseGeocode(coords.lat, coords.lon);
       data = await getWeatherByCoords(coords.lat, coords.lon, label ?? undefined);
       source = "live";
+      remember = true;
+    } else if (restored) {
+      // Remembered location: fetch by its coords + stored label (no re-geocode).
+      data = await getWeatherByCoords(restored.lat, restored.lon, {
+        name: restored.name,
+        region: restored.region,
+      });
+      source = "live";
+      remember = true;
     } else {
       const live = await getWeatherByQuery(query || DEFAULT_QUERY);
       if (live) {
         data = live;
         source = "live";
+        // Remember an explicit search, but not the bare Prague default.
+        remember = Boolean(query);
       } else {
         // No geocoding match. A user query that misses is "missing"; the default
         // query coming back empty means geocoding itself is effectively down.
@@ -117,6 +150,7 @@ export default async function WeatherPage({
       data={data}
       source={source}
       autoLocate={autoLocate}
+      remember={remember}
       initialUnits={initialUnits}
     />
   );
