@@ -8,5 +8,7 @@ export {
   getWeatherByQuery,
   getWeatherByCoords,
   searchLocations,
+  searchSuggestions,
   type GeoResult,
+  type LocationSuggestion,
 } from "@/lib/weather/provider";

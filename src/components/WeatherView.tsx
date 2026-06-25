@@ -11,7 +11,9 @@ import { HourlyStrip } from "@/components/HourlyStrip";
 import { LocationSearch } from "@/components/LocationSearch";
 import { UnitToggle } from "@/components/UnitToggle";
 import { useGeolocation, type Coords } from "@/hooks/useGeolocation";
+import { useLocationSearch } from "@/hooks/useLocationSearch";
 import { useUnits } from "@/hooks/useUnits";
+import type { LocationSuggestion } from "@/lib/weather";
 import type { Units, WeatherSnapshot } from "@/lib/weather/types";
 
 /** Inline guidance when geolocation can't deliver coordinates. */
@@ -53,8 +55,25 @@ export function WeatherView({
   const [query, setQuery] = useState("");
   const router = useRouter();
   const { status, locate } = useGeolocation();
+  const { suggestions, loading: searching } = useLocationSearch(query);
   const { location, current, hourly, daily } = data;
   const geoHint = geoHintFor(status);
+
+  // A picked candidate already carries its coords + label, so navigate straight
+  // to that place (no re-geocode) and pass the label through the URL so the
+  // server skips reverse geocoding.
+  const handleSelect = useCallback(
+    (suggestion: LocationSuggestion) => {
+      const params = new URLSearchParams({
+        lat: suggestion.latitude.toFixed(2),
+        lon: suggestion.longitude.toFixed(2),
+        name: suggestion.name,
+      });
+      if (suggestion.region) params.set("region", suggestion.region);
+      router.push(`/weather?${params}`);
+    },
+    [router],
+  );
 
   const goToCoords = useCallback(
     (coords: Coords, mode: "push" | "replace" = "push") => {
@@ -99,6 +118,9 @@ export function WeatherView({
                 <LocationSearch
                   value={query}
                   onChange={setQuery}
+                  suggestions={suggestions}
+                  searching={searching}
+                  onSelect={handleSelect}
                   onUseLocation={handleUseLocation}
                   locating={status === "locating"}
                 />
@@ -109,6 +131,9 @@ export function WeatherView({
               <LocationSearch
                 value={query}
                 onChange={setQuery}
+                suggestions={suggestions}
+                searching={searching}
+                onSelect={handleSelect}
                 onUseLocation={handleUseLocation}
                 locating={status === "locating"}
               />

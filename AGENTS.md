@@ -66,12 +66,13 @@ src/
 │  └─ WeatherIcon.tsx                    # condition → Phosphor glyph
 ├─ lib/
 │  ├─ weather/  index.ts (public interface), provider.ts (Open-Meteo adapter),
+│  │            actions.ts ("use server" search-suggestion boundary),
 │  │            wmo.ts (WMO code → condition), types.ts (normalized model), mock.ts (sample fallback)
 │  ├─ geo/      reverse.ts               # coords → place name (BigDataCloud), cached + rate-limited
 │  ├─ outbound.ts                        # shared cachedFetch + multi-window rate limiter (all 3 APIs)
 │  ├─ format.ts                          # temp/wind/visibility/pressure + unit conversion
 │  └─ units.ts                           # unit cookie name + parser (shared by server + client)
-└─ hooks/  useMercuryCanvas.ts (WebGL setup), useGeolocation.ts (permission-gated coords), useUnits.ts (cookie-persisted °C/°F)
+└─ hooks/  useMercuryCanvas.ts (WebGL setup), useGeolocation.ts (permission-gated coords), useUnits.ts (cookie-persisted °C/°F), useLocationSearch.ts (debounced search autocomplete)
 public/   static assets
 docs/     implementation-plan.md, documentation.md
 ```
@@ -97,7 +98,8 @@ The main app view lives at `src/app/weather/page.tsx` (route `/weather`). The Se
 - **`DetailsGrid`** — 8 liquid-glass stat tiles (feels-like, wind, humidity, UV, visibility, pressure, sunrise, sunset).
 - **`HourlyStrip`** — horizontal scroll-snap of the next 24 hours.
 - **`DailyForecast`** — 7 rows with per-day temperature range bars scaled to the week's min/max.
-- **`LocationSearch`** — submitting navigates to `/weather?q=…`; the pin button runs the `useGeolocation` flow (owned by `WeatherView`) and navigates to `/weather?lat&lon` on success. A denied/unavailable/failed geolocation attempt shows an inline hint under the nav instead of failing silently. `UnitToggle` drives live °C/°F conversion, persisted in a cookie (`useUnits`) and read server-side so the first paint already shows the saved unit (no flash).
+- **`LocationSearch`** — an ARIA combobox with a debounced autocomplete: as you type it lists candidate places (so "Paris"/"Springfield" disambiguate). Picking one navigates to `/weather?lat&lon&name&region` — the server uses that label directly and skips reverse geocoding, loading the exact place with no re-geocode. Pressing Enter with nothing highlighted falls back to `/weather?q=…`. The pin button runs the `useGeolocation` flow (owned by `WeatherView`) and navigates to `/weather?lat&lon` on success. A denied/unavailable/failed geolocation attempt shows an inline hint under the nav instead of failing silently. `UnitToggle` drives live °C/°F conversion, persisted in a cookie (`useUnits`) and read server-side so the first paint already shows the saved unit (no flash).
+- **Autocomplete data flow.** The suggestion fetch is a Server Action (`src/lib/weather/actions.ts`, `searchLocationsAction`) wrapping `searchSuggestions` in `provider.ts` — no public route handler, provider specifics stay server-side. It's driven by `useLocationSearch` (`src/hooks/`), owned by `WeatherView` so one debounced fetch serves both responsive `LocationSearch` slots.
 
 Data flow: `page.tsx` calls `getWeatherByQuery` / `getWeatherByCoords` from `src/lib/weather` (public interface in `index.ts`; the Open-Meteo adapter + normalization in `provider.ts`; WMO weather-code → our `Condition` in `wmo.ts`). The "use my location" path also calls `reverseGeocode` from `src/lib/geo` for the place name. Models + formatting: `types.ts` (normalized model), `mock.ts` (sample fallback, same shape), `format.ts` (temp/wind/visibility/pressure + metric/imperial). Icons come from Phosphor via **`WeatherIcon`** (condition + day/night → one glyph). Numbers render in Geist Mono; the rest is Bricolage Grotesque.
 
@@ -112,9 +114,11 @@ Phase 0 (scaffold) done; dark liquid-mercury landing at `/` and a matching custo
 Done:
 - Normalized weather types (`src/lib/weather/types.ts`), formatters with metric/imperial conversion (`src/lib/format.ts`), and the full UI (current conditions, conditions grid, hourly strip, 7-day forecast) with a working °C/°F toggle.
 - **Open-Meteo adapter** (`provider.ts` + `index.ts` + `wmo.ts`): cached, revalidated forecast + geocoding behind our normalized types.
-- **Location search** (geocoded via `?q=`) and **"use my location"** (auto-prompt on the default view; `?lat&lon` → forecast + BigDataCloud reverse geocode in `src/lib/geo/reverse.ts`, rate-limited).
+- **Location search** with a **debounced autocomplete dropdown** (`searchSuggestions` via the `searchLocationsAction` Server Action + `useLocationSearch`): picking a candidate loads that exact place via `?lat&lon&name&region` (server skips reverse geocoding); Enter with nothing selected falls back to `?q=`. Plus **"use my location"** (auto-prompt on the default view; `?lat&lon` → forecast + BigDataCloud reverse geocode in `src/lib/geo/reverse.ts`, rate-limited).
 - **Graceful fallback:** sample snapshot + an honest disclaimer when the provider is unreachable (`offline`) or a place isn't found (`missing`).
 - **Caching & rate limiting** (`src/lib/outbound.ts`): all three outbound calls share `cachedFetch` (Next revalidate + per-instance memo) and a multi-window `createLimiter` circuit breaker charged only on cache misses; cache keys collapsed via coord rounding + query normalization.
 - **Persisted units + geolocation feedback:** the °C/°F choice is stored in a cookie (`useUnits` + `src/lib/units.ts`) and read by the Server Component, so the first paint matches the saved unit with no flash; a denied/unavailable/failed geolocation attempt now surfaces an inline hint instead of silently staying on Prague.
 
-Next per the plan: the first tests (formatters + adapter), and search disambiguation (a results dropdown wiring the already-built `searchLocations`). Favorites/saved locations are out of scope (dropped).
+- **Search disambiguation (3A):** the search box is now a debounced autocomplete combobox; selecting a candidate loads that exact place. See **Weather view** → `LocationSearch` / "Autocomplete data flow".
+
+Next per the plan: remember the geolocation outcome so the bare `/weather` stops re-prompting every visit (3B — auto-load the last location); an accessibility pass (3C — keyboard nav for the hourly strip, reconsider the auto-prompt, focus/contrast); and the first tests (formatters + adapter). Favorites/saved locations are out of scope (dropped).

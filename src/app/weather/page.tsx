@@ -12,6 +12,8 @@ type SearchParams = {
   q?: string | string[];
   lat?: string | string[];
   lon?: string | string[];
+  name?: string | string[];
+  region?: string | string[];
 };
 
 function readParam(value: string | string[] | undefined): string | undefined {
@@ -44,7 +46,12 @@ export async function generateMetadata({
   const description =
     "Current conditions, an hourly view, and a seven-day forecast. Fast, calm, and accurate.";
 
-  if (readCoords(params)) return { title: "My location · Mercury", description };
+  if (readCoords(params)) {
+    // A search-selected place carries its own name; only the bare geolocation
+    // path falls back to the generic "My location" title.
+    const place = readParam(params.name)?.trim();
+    return { title: `${place || "My location"} · Mercury`, description };
+  }
 
   const q = readParam(params.q)?.trim();
   const name = q ? q.charAt(0).toUpperCase() + q.slice(1) : DEFAULT_QUERY;
@@ -81,7 +88,13 @@ export default async function WeatherPage({
 
   try {
     if (coords) {
-      const label = await reverseGeocode(coords.lat, coords.lon);
+      // A search-selected candidate hands us its label in the URL, so use it
+      // directly and skip reverse geocoding; the bare geolocation path (no name)
+      // still resolves a name via the reverse geocoder.
+      const name = readParam(params.name)?.trim();
+      const label = name
+        ? { name, region: readParam(params.region)?.trim() ?? "" }
+        : await reverseGeocode(coords.lat, coords.lon);
       data = await getWeatherByCoords(coords.lat, coords.lon, label ?? undefined);
       source = "live";
     } else {

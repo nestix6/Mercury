@@ -100,6 +100,19 @@ export interface GeoResult {
   timezone?: string;
 }
 
+/**
+ * A slim, UI-ready geocoding candidate for the search autocomplete. Carries the
+ * coords + display label so picking one navigates straight to that exact place
+ * (no re-geocode-and-guess) without an extra reverse-geocode call.
+ */
+export interface LocationSuggestion {
+  id: number;
+  name: string;
+  region: string;
+  latitude: number;
+  longitude: number;
+}
+
 interface GeocodeResponse {
   results?: GeoResult[];
 }
@@ -206,6 +219,23 @@ export async function searchLocations(
   if (!data) throw new Error("Open-Meteo geocoding rate limit reached");
 
   return data.results ?? [];
+}
+
+/**
+ * Search candidates for the autocomplete dropdown. Reuses `describeRegion` so the
+ * candidate label matches what the forecast header would show for that place.
+ */
+export async function searchSuggestions(
+  query: string,
+): Promise<LocationSuggestion[]> {
+  const results = await searchLocations(query, 5);
+  return results.map((place) => ({
+    id: place.id,
+    name: place.name,
+    region: describeRegion(place),
+    latitude: place.latitude,
+    longitude: place.longitude,
+  }));
 }
 
 async function fetchForecast(
