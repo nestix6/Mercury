@@ -112,3 +112,13 @@ The bare `/weather` view auto-prompted for geolocation on **every** visit and al
 - **Two cookies, read server-side** (`lib/location-store.ts`, a plain module like `lib/units.ts`): `mercury-place` holds the last user-resolved location (coords + label) as URL-encoded JSON; `mercury-geo-asked` records that the prompt was already answered without a place. The client writes them with `document.cookie` (`writePlace` / `writeGeoAsked` in `WeatherView`); the Server Component parses them with `parsePlace`.
 - **Restore instead of Prague.** On a bare visit `weather/page.tsx` restores `mercury-place` by fetching its coords with the stored label (no reverse-geocode), flags `source: live`, and titles the page with the remembered name. Only a first-ever bare visit (nothing remembered, never asked) still auto-prompts; after that the pin button is the way in. The Prague fallback is never remembered (`remember` is false for it), so it can't lock itself in.
 - **What's persisted.** Any user-resolved live view — geolocation success, a picked suggestion, or an explicit `?q=` search — writes `mercury-place`. A denied / unavailable / errored prompt writes `mercury-geo-asked` so the auto-prompt doesn't fire again.
+
+## Phase 9 — Accessibility pass
+
+Tightening keyboard operability and contrast across the weather view.
+
+- **Keyboard-operable hourly strip.** The horizontal scroll-snap strip was mouse/trackpad-only. `HourlyStrip` is now a small `"use client"` leaf whose scroller is focusable (`tabIndex`, an `aria-label`) and responds to Arrow keys (scroll by ~one tile) and Home/End (jump to the ends); the smooth scroll drops to instant under `prefers-reduced-motion`.
+- **Consistent keyboard focus.** The custom dark glass swallowed the browser's default outline, so `globals.css` adds one high-contrast `:focus-visible` ring for all interactive controls (`:where(a, button, [role="button"], [tabindex])`, specificity 0 so a component can still opt into its own treatment — e.g. the search field keeps its `focus-within` ring). Mouse/touch focus stays quiet.
+- **Contrast.** A few meaningful data bits sat at `text-zinc-500` (~3.5:1, under AA): the daily low temperature, the conditions-tile detail line, and the footer are bumped to `text-zinc-400`.
+- **Auto-prompt kept (deliberate).** With Phase 8 the geolocation prompt already fires at most once (first-ever visit); we kept that rather than going fully pin-only.
+- **Dropdown legibility.** The search suggestions used the lightest `.glass` and washed out against the background; they now use `.glass-dark` (deeper base, blurrier) so the candidates read clearly.

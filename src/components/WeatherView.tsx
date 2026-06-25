@@ -221,7 +221,7 @@ export function WeatherView({
         </div>
       ) : null}
 
-      <footer className="mx-auto flex w-full max-w-5xl items-center justify-between px-5 pb-8 text-xs text-zinc-500 sm:px-8">
+      <footer className="mx-auto flex w-full max-w-5xl items-center justify-between px-5 pb-8 text-xs text-zinc-400 sm:px-8">
         <span>&copy; 2026 Mercury</span>
         {source !== "live" ? (
           <span>Showing sample data</span>
@@ -230,7 +230,7 @@ export function WeatherView({
             href="https://open-meteo.com/"
             target="_blank"
             rel="noreferrer"
-            className="transition-colors hover:text-zinc-300"
+            className="rounded transition-colors hover:text-zinc-200"
           >
             Weather data by Open-Meteo
           </a>

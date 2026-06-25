@@ -61,7 +61,8 @@ src/
 ├─ components/
 │  ├─ MercuryField.tsx, MercuryBlob.tsx, mercury-shaders.ts     # liquid-mercury bg
 │  ├─ WeatherView.tsx                    # "use client" shell (units/search/geolocation, layout)
-│  ├─ CurrentConditions, DetailsGrid, HourlyStrip, DailyForecast
+│  ├─ CurrentConditions, DetailsGrid, DailyForecast              # presentational
+│  ├─ HourlyStrip.tsx                    # "use client" (keyboard-scrollable strip)
 │  ├─ LocationSearch.tsx, UnitToggle.tsx # "use client" interactive leaves
 │  └─ WeatherIcon.tsx                    # condition → Phosphor glyph
 ├─ lib/
@@ -97,7 +98,7 @@ The main app view lives at `src/app/weather/page.tsx` (route `/weather`). The Se
 
 - **`CurrentConditions`** — location, local time, the big chrome temperature, condition, feels-like, H/L.
 - **`DetailsGrid`** — 8 liquid-glass stat tiles (feels-like, wind, humidity, UV, visibility, pressure, sunrise, sunset).
-- **`HourlyStrip`** — horizontal scroll-snap of the next 24 hours.
+- **`HourlyStrip`** — horizontal scroll-snap of the next 24 hours; a small `"use client"` leaf so it's keyboard-operable (focusable scroller, Arrow/Home/End to scroll, smooth scroll dropped under reduced-motion).
 - **`DailyForecast`** — 7 rows with per-day temperature range bars scaled to the week's min/max.
 - **`LocationSearch`** — an ARIA combobox with a debounced autocomplete: as you type it lists candidate places (so "Paris"/"Springfield" disambiguate). Picking one navigates to `/weather?lat&lon&name&region` — the server uses that label directly and skips reverse geocoding, loading the exact place with no re-geocode. Pressing Enter with nothing highlighted falls back to `/weather?q=…`. The pin button runs the `useGeolocation` flow (owned by `WeatherView`) and navigates to `/weather?lat&lon` on success. A denied/unavailable/failed geolocation attempt shows an inline hint under the nav instead of failing silently. **Remembered location (3B):** any user-resolved live view (geolocation, a picked suggestion, or a `?q=` search) writes a `mercury-place` cookie via `src/lib/location-store.ts`, so a return to the bare `/weather` restores it instead of Prague; a `mercury-geo-asked` cookie stops the auto-prompt from firing on every visit (only a first-ever bare visit prompts — after that the pin button is the way in). `WeatherLocation` now carries `latitude`/`longitude` so a live snapshot is enough to remember. `UnitToggle` drives live °C/°F conversion, persisted in a cookie (`useUnits`) and read server-side so the first paint already shows the saved unit (no flash).
 - **Autocomplete data flow.** The suggestion fetch is a Server Action (`src/lib/weather/actions.ts`, `searchLocationsAction`) wrapping `searchSuggestions` in `provider.ts` — no public route handler, provider specifics stay server-side. It's driven by `useLocationSearch` (`src/hooks/`), owned by `WeatherView` so one debounced fetch serves both responsive `LocationSearch` slots.
@@ -106,7 +107,7 @@ Data flow: `page.tsx` calls `getWeatherByQuery` / `getWeatherByCoords` from `src
 
 When `source` isn't `live` (`offline` = provider unreachable, `missing` = place not found), `WeatherView` renders an amber disclaimer above the footer so sample data is never mistaken for real conditions.
 
-Glass utilities (`globals.css`): **`.glass-dark`** (the floating dynamic-island nav), **`.glass-panel`** (body card surface), and **`.glass-interactive`** (compose with `.glass-panel` for a hover lift/brighten, dropped under `prefers-reduced-motion`). Each keeps a `prefers-reduced-transparency` solid fallback, alongside the existing `.glass` pill.
+Glass utilities (`globals.css`): **`.glass-dark`** (the floating dynamic-island nav, and the search suggestions dropdown — chosen over `.glass` so candidates stay legible), **`.glass-panel`** (body card surface), and **`.glass-interactive`** (compose with `.glass-panel` for a hover lift/brighten, dropped under `prefers-reduced-motion`). Each keeps a `prefers-reduced-transparency` solid fallback, alongside the existing `.glass` pill. `globals.css` also defines one shared high-contrast `:focus-visible` ring for interactive controls (the dark glass swallows the default outline); specificity-0 (`:where(...)`) so a component can still opt into its own focus treatment.
 
 ## Status
 
@@ -122,5 +123,6 @@ Done:
 
 - **Search disambiguation (3A):** the search box is now a debounced autocomplete combobox; selecting a candidate loads that exact place. See **Weather view** → `LocationSearch` / "Autocomplete data flow".
 - **Remember the last location (3B):** the bare `/weather` restores the last user-resolved location (`mercury-place` cookie) instead of Prague, and stops auto-prompting for geolocation on every visit (`mercury-geo-asked`); coords now ride along in `WeatherLocation`. See **Weather view** → `LocationSearch`.
+- **Accessibility pass (3C):** keyboard-operable hourly strip (`HourlyStrip` is now `"use client"`), a shared `:focus-visible` ring in `globals.css`, and contrast bumps (`zinc-500` → `zinc-400` on the daily low / tile detail / footer). The first-visit geolocation auto-prompt was kept (already once-only after 3B).
 
-Next per the plan: an accessibility pass (3C — keyboard nav for the hourly strip, reconsider the auto-prompt, focus/contrast); and the first tests (formatters + adapter). Favorites/saved locations are out of scope (dropped).
+Next per the plan: the first tests (formatters + adapter). Favorites/saved locations are out of scope (dropped).

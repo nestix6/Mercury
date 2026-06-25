@@ -92,7 +92,7 @@ export function DetailsGrid({ current, units }: Props) {
             <div className="mt-auto">
               <p className="font-mono text-2xl text-zinc-100">{value}</p>
               {detail ? (
-                <p className="mt-0.5 text-xs text-zinc-500">{detail}</p>
+                <p className="mt-0.5 text-xs text-zinc-400">{detail}</p>
               ) : null}
             </div>
           </div>

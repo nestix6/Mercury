@@ -20,6 +20,15 @@ body {
   font-family: var(--font-sans), system-ui, sans-serif;
 }
 
+/* Consistent, high-contrast keyboard focus for interactive controls. The custom
+   dark glass swallows the default outline, so set an explicit one; :focus-visible
+   keeps it quiet for mouse/touch, and :where() keeps specificity 0 so a component
+   can still opt into its own treatment (e.g. the search field's focus-within ring). */
+:where(a, button, [role="button"], [tabindex]):focus-visible {
+  outline: 2px solid rgb(244 244 245 / 0.85);
+  outline-offset: 2px;
+}
+
 /* Liquid-metal wordmark: vertical light/dark/light ramp = chrome type. */
 .text-chrome {
   background: linear-gradient(

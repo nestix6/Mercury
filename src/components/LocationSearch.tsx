@@ -164,7 +164,7 @@ export function LocationSearch({
             id={listId}
             role="listbox"
             aria-label="Location suggestions"
-            className="glass absolute top-full left-0 z-40 mt-2 max-h-72 w-full overflow-y-auto rounded-2xl p-1.5 shadow-xl shadow-black/40"
+            className="glass-dark absolute top-full left-0 z-40 mt-2 max-h-72 w-full overflow-y-auto rounded-2xl p-1.5"
           >
             {suggestions.map((suggestion, index) => {
               const isActive = index === activeIndex;

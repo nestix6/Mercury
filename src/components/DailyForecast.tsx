@@ -54,7 +54,7 @@ export function DailyForecast({ days, units }: Props) {
                 </span>
 
                 <div className="flex flex-1 items-center justify-end gap-3">
-                  <span className="w-9 shrink-0 text-right font-mono text-sm text-zinc-500">
+                  <span className="w-9 shrink-0 text-right font-mono text-sm text-zinc-400">
                     {formatTempValue(day.low, units)}°
                   </span>
                   <div className="relative h-1.5 w-full max-w-[12rem] flex-1 rounded-full bg-white/10">
