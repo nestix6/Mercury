@@ -122,3 +122,14 @@ Tightening keyboard operability and contrast across the weather view.
 - **Contrast.** A few meaningful data bits sat at `text-zinc-500` (~3.5:1, under AA): the daily low temperature, the conditions-tile detail line, and the footer are bumped to `text-zinc-400`.
 - **Auto-prompt kept (deliberate).** With Phase 8 the geolocation prompt already fires at most once (first-ever visit); we kept that rather than going fully pin-only.
 - **Dropdown legibility.** The search suggestions used the lightest `.glass` and washed out against the background; they now use `.glass-dark` (deeper base, blurrier) so the candidates read clearly.
+
+## Phase 10 — Mobile responsiveness
+
+Tightening the layout for small (≤375 px) screens; desktop is unchanged (all fixes are gated behind `sm:`).
+
+- **Current-conditions hero.** Was a single `flex-wrap` row of a 96 px icon, a `text-8xl` temperature, and the condition block — it wrapped unpredictably on phones. It now stacks: a smaller icon (`size-20`) and `text-7xl` temperature locked together on one row, with the condition/feels-like/H-L block below; the original side-by-side layout returns at `sm:`.
+- **Daily forecast rows.** The fixed columns (day `w-14`, precip `w-12`, two `w-9` temps) plus `gap-3`s summed past a 320 px row's width and forced horizontal overflow. Mobile widths/gaps tightened (`w-11`/`w-9`/`w-8`, `gap-2`), restoring full sizes at `sm:`, so the range bar keeps real room instead of collapsing.
+- **Conditions grid.** Tile values drop `text-2xl` → `text-xl` and the grid gap `gap-4` → `gap-3` on mobile so longer values (e.g. "29.92 inHg") aren't cramped in the 2-column layout; both scale back up at `sm:`.
+- **Landing wordmark.** The `h1` "Mercury" at `text-8xl` overran the `px-6` padding on narrow phones (clipped by `overflow-hidden`); base size lowered to `text-7xl`, `sm:` and up unchanged.
+- **Already-responsive (left as-is).** The two-slot nav search (desktop inline / mobile second row) and the keyboard-scrollable `HourlyStrip` already handled mobile correctly.
+- **Note on mobile testing.** A real phone hitting the `next dev` Network URL over the LAN won't hydrate (static HTML renders, client JS never runs — looks like dead buttons + a blank mercury canvas); verify on a production build (`npm run build && npm run start`) or an HTTPS tunnel. Geolocation additionally needs a secure context (HTTPS/localhost), so it only works on the deployed site, not the plain-HTTP LAN address.

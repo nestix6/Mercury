@@ -26,9 +26,9 @@ export function DailyForecast({ days, units }: Props) {
             return (
               <li
                 key={day.date}
-                className="flex items-center gap-3 rounded-2xl px-2 py-3 transition-colors hover:bg-white/[0.04] sm:px-3"
+                className="flex items-center gap-2 rounded-2xl px-2 py-3 transition-colors hover:bg-white/[0.04] sm:gap-3 sm:px-3"
               >
-                <div className="w-14 shrink-0">
+                <div className="w-11 shrink-0 sm:w-14">
                   <p
                     className={`text-sm font-medium ${
                       day.label === "Today" ? "text-zinc-100" : "text-zinc-300"
@@ -44,7 +44,7 @@ export function DailyForecast({ days, units }: Props) {
                   aria-label={day.condition.label}
                 />
 
-                <span className="flex w-12 shrink-0 items-center gap-0.5 text-xs text-zinc-400">
+                <span className="flex w-9 shrink-0 items-center gap-0.5 text-xs text-zinc-400 sm:w-12">
                   {day.precipitation >= 20 ? (
                     <>
                       <Drop weight="fill" className="size-3" aria-hidden="true" />
@@ -53,8 +53,8 @@ export function DailyForecast({ days, units }: Props) {
                   ) : null}
                 </span>
 
-                <div className="flex flex-1 items-center justify-end gap-3">
-                  <span className="w-9 shrink-0 text-right font-mono text-sm text-zinc-400">
+                <div className="flex flex-1 items-center justify-end gap-2 sm:gap-3">
+                  <span className="w-8 shrink-0 text-right font-mono text-sm text-zinc-400 sm:w-9">
                     {formatTempValue(day.low, units)}°
                   </span>
                   <div className="relative h-1.5 w-full max-w-[12rem] flex-1 rounded-full bg-white/10">
@@ -63,7 +63,7 @@ export function DailyForecast({ days, units }: Props) {
                       style={{ left: `${left}%`, width: `${Math.max(width, 6)}%` }}
                     />
                   </div>
-                  <span className="w-9 shrink-0 font-mono text-sm text-zinc-100">
+                  <span className="w-8 shrink-0 font-mono text-sm text-zinc-100 sm:w-9">
                     {formatTempValue(day.high, units)}°
                   </span>
                 </div>

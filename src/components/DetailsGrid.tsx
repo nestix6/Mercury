@@ -79,7 +79,7 @@ export function DetailsGrid({ current, units }: Props) {
   return (
     <section className="animate-rise [animation-delay:160ms]">
       <h2 className="mb-3 text-sm font-medium text-zinc-400">Conditions</h2>
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
         {stats.map(({ icon: Glyph, label, value, detail }) => (
           <div
             key={label}
@@ -90,7 +90,9 @@ export function DetailsGrid({ current, units }: Props) {
               <span className="text-sm font-medium">{label}</span>
             </div>
             <div className="mt-auto">
-              <p className="font-mono text-2xl text-zinc-100">{value}</p>
+              <p className="font-mono text-xl text-zinc-100 sm:text-2xl">
+                {value}
+              </p>
               {detail ? (
                 <p className="mt-0.5 text-xs text-zinc-400">{detail}</p>
               ) : null}

@@ -24,22 +24,25 @@ export function CurrentConditions({ current, location, units }: Props) {
       </div>
       <p className="mt-1 text-sm text-zinc-500">{location.localTime}</p>
 
-      <div className="mt-8 flex flex-wrap items-center gap-x-8 gap-y-6">
-        <WeatherIcon
-          code={current.condition.code}
-          isDay={current.isDay}
-          className="size-24 shrink-0 text-zinc-100/90 sm:size-28"
-          aria-hidden="true"
-        />
+      <div className="mt-6 flex flex-col gap-6 sm:mt-8 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-8 sm:gap-y-6">
+        {/* Icon + temperature stay on one row even on the narrowest phones. */}
+        <div className="flex items-center gap-4 sm:gap-8">
+          <WeatherIcon
+            code={current.condition.code}
+            isDay={current.isDay}
+            className="size-20 shrink-0 text-zinc-100/90 sm:size-28"
+            aria-hidden="true"
+          />
 
-        <div className="flex items-end">
-          <span className="text-chrome text-8xl leading-[0.85] font-semibold tracking-tight sm:text-9xl">
-            {formatTemp(current.temperature, units)}
-          </span>
+          <div className="flex items-end">
+            <span className="text-chrome text-7xl leading-[0.85] font-semibold tracking-tight sm:text-9xl">
+              {formatTemp(current.temperature, units)}
+            </span>
+          </div>
         </div>
 
         <div className="flex flex-col gap-1">
-          <p className="text-2xl font-medium text-zinc-100">
+          <p className="text-xl font-medium text-zinc-100 sm:text-2xl">
             {current.condition.label}
           </p>
           <p className="text-zinc-400">

@@ -18,7 +18,7 @@ export default function Home() {
           Live weather, refined
         </p>
 
-        <h1 className="text-chrome animate-rise pb-3 text-8xl leading-[1.1] font-semibold tracking-tight [animation-delay:140ms] sm:text-9xl md:text-[11rem] lg:text-[12.5rem]">
+        <h1 className="text-chrome animate-rise pb-3 text-7xl leading-[1.1] font-semibold tracking-tight [animation-delay:140ms] sm:text-9xl md:text-[11rem] lg:text-[12.5rem]">
           Mercury
         </h1>
 
