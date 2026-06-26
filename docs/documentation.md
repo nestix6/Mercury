@@ -133,3 +133,24 @@ Tightening the layout for small (≤375 px) screens; desktop is unchanged (all f
 - **Landing wordmark.** The `h1` "Mercury" at `text-8xl` overran the `px-6` padding on narrow phones (clipped by `overflow-hidden`); base size lowered to `text-7xl`, `sm:` and up unchanged.
 - **Already-responsive (left as-is).** The two-slot nav search (desktop inline / mobile second row) and the keyboard-scrollable `HourlyStrip` already handled mobile correctly.
 - **Note on mobile testing.** A real phone hitting the `next dev` Network URL over the LAN won't hydrate (static HTML renders, client JS never runs — looks like dead buttons + a blank mercury canvas); verify on a production build (`npm run build && npm run start`) or an HTTPS tunnel. Geolocation additionally needs a secure context (HTTPS/localhost), so it only works on the deployed site, not the plain-HTTP LAN address.
+
+## Phase 11 — Tests (Vitest)
+
+Standing up a test runner and a first suite — unit tests over the pure logic plus component tests of the forecast views — a regression net for the formatting/normalization layer and the rendering every view depends on.
+
+- **Runner.** Vitest in a **jsdom** environment (`vitest.config.ts`). `tests/setup.ts` registers jest-dom matchers and runs React Testing Library `cleanup()` after each test. The `@/*` alias resolves from `tsconfig.json` via Vitest's native `resolve.tsconfigPaths`. Scripts: `npm test` (one run), `npm run test:watch`.
+  - jsdom is set globally rather than per-file. The pure-logic suites don't need a DOM, but the suite is small enough that the ~0.6 s jsdom startup isn't worth splitting; flip individual files back to node with a `// @vitest-environment node` docblock if that ever changes.
+- **Layout.** Specs live under `tests/`, mirroring the `src/` tree (e.g. `tests/lib/weather/provider.test.ts`, `tests/components/DetailsGrid.test.tsx`). They import through `@/*`, so the folder is a convention, not a dependency.
+- **Unit coverage.**
+  - `format` — every formatter (°C↔°F, km↔mi/mph, hPa↔inHg, rounding, the UV bands).
+  - `wmo` — code → condition mapping plus the cloudy fallback for unmapped codes.
+  - `units` / `location-store` — the cookie parsers (validation + serialize/parse round-trip, out-of-range/non-finite/wrong-type rejection).
+  - `outbound` — the `createLimiter` budget (per-window limits, multi-window rejection, reset after the window elapses, zero-limit), driven with fake timers.
+  - `weather/provider` — adapter normalization, tested through the public `getWeatherByCoords` / `getWeatherByQuery` by mocking `cachedFetch` so the network never runs. Verifies the compass mapping, m→km visibility, `pressure_msl` preference, hourly alignment to "Now", "Today" labelling, and `describeRegion`.
+  - **Why mock at `cachedFetch`, not deeper.** It keeps the provider's internals (`normalize`, `toCompass`, time slicing) private while still exercising them end-to-end through the boundary — consistent with "normalize at the boundary".
+- **Component coverage.** The four forecast views render against the `MOCK_WEATHER` snapshot with React Testing Library:
+  - `CurrentConditions` — place/time/condition text and metric **and** imperial temperatures (so the conversion path is covered, not just passthrough).
+  - `DetailsGrid` — all eight tiles, their values/descriptors, and imperial conversions (mph / mi / inHg).
+  - `HourlyStrip` — "Now" label, one tile per hour, and the keyboard scroller (`ArrowRight` → `scrollBy`, with `matchMedia` + `scrollBy`/`scrollTo` stubbed since jsdom implements none of them).
+  - `DailyForecast` — seven rows, "Today" + weekday labels, high/low, and the ≥20 % precipitation threshold (lower values stay hidden).
+- **Still manual.** Geolocation permission flows (granted / denied / unavailable) are verified by hand — they hinge on the browser's permission prompt.

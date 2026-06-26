@@ -2,7 +2,7 @@
 
 A fast, clean weather app. Search a location (or use geolocation) and see current conditions, an hourly strip, and a 7-day forecast. Priorities: speed, a calm/legible UI, and accurate data.
 
-> **Read `docs/implementation-plan.md` at the start of each session.** It's the source of truth for scope, phases, the data model, and key decisions — this file only summarizes it.
+> This file is the source of truth for scope, conventions, and key decisions. `docs/documentation.md` is a phase-by-phase tour of how the app was built; the normalized data model lives in `src/lib/weather/types.ts`.
 
 ## Stack
 
@@ -23,9 +23,10 @@ npm run dev      # dev server (Turbopack) → http://localhost:3000
 npm run build    # production build
 npm run start    # serve the production build
 npm run lint     # ESLint (eslint-config-next: core-web-vitals + typescript)
+npm test         # Vitest (one run); `npm run test:watch` to watch
 ```
 
-There is no test runner configured yet. If you add tests (see plan §11), document the command here.
+Tests run on **Vitest** in a **jsdom** environment (config in `vitest.config.ts`; `tests/setup.ts` wires up jest-dom matchers + React Testing Library cleanup). Specs live under `tests/`, mirroring the `src/` layout (e.g. `tests/lib/weather/provider.test.ts`, `tests/components/DetailsGrid.test.tsx`); they import through the `@/*` alias, so they don't depend on their own location. Coverage: unit tests over the pure logic — formatters, WMO mapping, unit/location cookie parsers, the rate limiter, and the provider adapter (mocking `cachedFetch` at the network boundary) — plus component tests of the forecast views (`CurrentConditions`, `DetailsGrid`, `HourlyStrip`, `DailyForecast`) rendered against the `MOCK_WEATHER` snapshot.
 
 ## Git
 
@@ -76,12 +77,10 @@ src/
 │  └─ location-store.ts                  # remembered-location cookies (parse/serialize/write)
 └─ hooks/  useMercuryCanvas.ts (WebGL setup), useGeolocation.ts (permission-gated coords), useUnits.ts (cookie-persisted °C/°F), useLocationSearch.ts (debounced search autocomplete)
 public/   static assets
-docs/     implementation-plan.md, documentation.md
+docs/     documentation.md
 ```
 
-Still to land (per the plan): the first tests (formatters + adapter). Favorites/saved locations were considered and **dropped** (out of scope) — ignore the `FavoritesBar` references in the plan. A Route Handler (`app/api/.../route.ts`) is only needed if a keyed provider is ever added — Open-Meteo and BigDataCloud need none.
-
-> Note: the plan's tree shows top-level `app/`, `lib/`, etc. — this project uses `src/`, so place everything under `src/`.
+Scope notes: the MVP and the planned Phase-2 polish are all shipped. **Favorites/saved locations are out of scope** (deliberately dropped). The app is **dark-theme only** by design — no light theme / system-preference switching. A Route Handler (`app/api/.../route.ts`) is only needed if a keyed provider is ever added — Open-Meteo and BigDataCloud need none.
 
 ## Landing & 404
 
@@ -114,6 +113,7 @@ Glass utilities (`globals.css`): **`.glass-dark`** (the floating dynamic-island 
 Phase 0 (scaffold) done; dark liquid-mercury landing at `/` and a matching custom 404 (see **Landing & 404**); and the main weather view at `/weather` (see **Weather view**) running on **live Open-Meteo data**.
 
 Done:
+
 - Normalized weather types (`src/lib/weather/types.ts`), formatters with metric/imperial conversion (`src/lib/format.ts`), and the full UI (current conditions, conditions grid, hourly strip, 7-day forecast) with a working °C/°F toggle.
 - **Open-Meteo adapter** (`provider.ts` + `index.ts` + `wmo.ts`): cached, revalidated forecast + geocoding behind our normalized types.
 - **Location search** with a **debounced autocomplete dropdown** (`searchSuggestions` via the `searchLocationsAction` Server Action + `useLocationSearch`): picking a candidate loads that exact place via `?lat&lon&name&region` (server skips reverse geocoding); Enter with nothing selected falls back to `?q=`. Plus **"use my location"** (auto-prompt on the default view; `?lat&lon` → forecast + BigDataCloud reverse geocode in `src/lib/geo/reverse.ts`, rate-limited).
@@ -124,5 +124,4 @@ Done:
 - **Search disambiguation (3A):** the search box is now a debounced autocomplete combobox; selecting a candidate loads that exact place. See **Weather view** → `LocationSearch` / "Autocomplete data flow".
 - **Remember the last location (3B):** the bare `/weather` restores the last user-resolved location (`mercury-place` cookie) instead of Prague, and stops auto-prompting for geolocation on every visit (`mercury-geo-asked`); coords now ride along in `WeatherLocation`. See **Weather view** → `LocationSearch`.
 - **Accessibility pass (3C):** keyboard-operable hourly strip (`HourlyStrip` is now `"use client"`), a shared `:focus-visible` ring in `globals.css`, and contrast bumps (`zinc-500` → `zinc-400` on the daily low / tile detail / footer). The first-visit geolocation auto-prompt was kept (already once-only after 3B).
-
-Next per the plan: the first tests (formatters + adapter). Favorites/saved locations are out of scope (dropped).
+- **Tests (Vitest + jsdom):** unit suites over the pure logic — `format`, `wmo`, `units`, `location-store`, the `createLimiter` budget, and the provider adapter normalization (mocking `cachedFetch`) — plus component tests of the forecast views (`CurrentConditions`, `DetailsGrid`, `HourlyStrip`, `DailyForecast`) against `MOCK_WEATHER`. Run with `npm test`. See **Commands**.

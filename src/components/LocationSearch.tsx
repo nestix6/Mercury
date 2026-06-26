@@ -26,8 +26,9 @@ interface Props {
 }
 
 /**
- * Manual location search (the primary path per the plan). Controlled so the
- * nav can render it in two responsive slots that stay in sync. As the user
+ * Manual location search (the primary path; geolocation is the enhancement).
+ * Controlled so the nav can render it in two responsive slots that stay in
+ * sync. As the user
  * types, a debounced autocomplete (candidates supplied by the parent) lets them
  * disambiguate ambiguous names ("Paris", "Springfield") — picking one hands the
  * exact place back to the parent. Submitting without a selection falls back to
