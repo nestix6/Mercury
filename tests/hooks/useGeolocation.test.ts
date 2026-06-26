@@ -96,7 +96,7 @@ describe("useGeolocation", () => {
     expect(result.current.status).toBe("error");
   });
 
-  it("passes a low-accuracy, timed-out options object to the browser API", () => {
+  it("passes a high-accuracy, timed-out options object to the browser API", () => {
     const getCurrentPosition = vi.fn();
     mockGeolocation(getCurrentPosition);
 
@@ -106,7 +106,7 @@ describe("useGeolocation", () => {
     expect(getCurrentPosition).toHaveBeenCalledWith(
       expect.any(Function),
       expect.any(Function),
-      expect.objectContaining({ enableHighAccuracy: false, timeout: 10_000 }),
+      expect.objectContaining({ enableHighAccuracy: true, timeout: 10_000 }),
     );
   });
 });

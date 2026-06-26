@@ -40,7 +40,11 @@ export function useGeolocation() {
       (err) => {
         setStatus(err.code === err.PERMISSION_DENIED ? "denied" : "error");
       },
-      { enableHighAccuracy: false, timeout: 10_000, maximumAge: 10 * 60_000 },
+      // High accuracy so we get the device's actual GPS fix, not a coarse
+      // network/IP centroid. The centroid can land a city's worth away on an
+      // unrepresentative Open-Meteo grid cell — e.g. Bratislava's centroid snaps
+      // to the airport cell, which the model runs ~3 °C hotter than the city.
+      { enableHighAccuracy: true, timeout: 10_000, maximumAge: 10 * 60_000 },
     );
   }, []);
 
