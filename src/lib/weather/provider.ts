@@ -24,10 +24,17 @@ import { cachedFetch, createLimiter, HOUR, MINUTE } from "@/lib/outbound";
 const GEOCODE_URL = "https://geocoding-api.open-meteo.com/v1/search";
 const FORECAST_URL = "https://api.open-meteo.com/v1/forecast";
 
-// Forecasts aren't real-time; refresh every 15 min (well inside rate limits).
-// City coordinates effectively never change, so geocoding can cache for a day.
-const FORECAST_REVALIDATE = 60 * 15;
+// City coordinates effectively never change, so geocoding caches for a day.
 const GEOCODE_REVALIDATE = 60 * 60 * 24;
+
+// Forecast freshness is governed by this per-instance memo, not Next's durable
+// cache: the forecast fetch uses `cache: "no-store"` (see fetchForecast) so a
+// visit after an idle gap is never served a stale-while-revalidate snapshot.
+// The memo is a hard TTL — a miss fetches synchronously — so data is at most
+// ~5 min stale, while repeat loads within the window still skip the network.
+// Open-Meteo's current values update ~hourly and its free limits are generous
+// (5000/hr), so a network hit per cold visit is well within budget.
+const FORECAST_MEMO_TTL = 60 * 5 * 1000;
 
 // Circuit breakers for Open-Meteo. Ceilings are generous (they never trip in
 // normal use) but stay well under Open-Meteo's free limits (600/min, 5000/hr)
@@ -42,11 +49,14 @@ const geocodeLimiter = createLimiter([
   { limit: 60, windowMs: MINUTE },
 ]);
 
-// Forecasts don't vary within ~1 km, and Open-Meteo's grid is coarser than that
-// anyway. Rounding collapses GPS jitter onto one cache key (and keeps precise
-// coordinates out of the URL).
+// Round coords to collapse GPS jitter onto one cache key (and keep the precise
+// home location out of the URL). Use 3 dp (~111 m): Open-Meteo's high-res models
+// (best_match picks ICON-D2/AROME here) resolve finer than 1 km, so rounding to
+// 2 dp could snap into an adjacent grid cell reading several °C apart — e.g. for
+// Bratislava, 2 dp landed in a cell ~3 °C hotter than the actual point. 3 dp
+// stays inside the same cell while still deduping near-identical lookups.
 function roundCoord(value: number): number {
-  return Math.round(value * 100) / 100; // 2 dp ≈ 1.1 km
+  return Math.round(value * 1000) / 1000; // 3 dp ≈ 111 m
 }
 
 const CURRENT_FIELDS = [
@@ -259,10 +269,13 @@ async function fetchForecast(
   const data = await cachedFetch<ForecastResponse>({
     key: url,
     url,
-    revalidate: FORECAST_REVALIDATE,
-    memoTtlMs: FORECAST_REVALIDATE * 1000,
+    memoTtlMs: FORECAST_MEMO_TTL,
     limiter: forecastLimiter,
     transform: (json) => json as ForecastResponse,
+    // Bypass Next's stale-while-revalidate cache: on a low-traffic app the first
+    // visit after an idle gap would otherwise be served a stale snapshot. The
+    // 5-min memo (a hard TTL, synchronous on miss) is the freshness guard instead.
+    cache: "no-store",
   });
   if (!data) throw new Error("Open-Meteo forecast rate limit reached");
 

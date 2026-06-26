@@ -11,6 +11,11 @@
  * Best-effort on serverless: the memo and counters are per-instance and reset
  * on cold start; the durable, cross-instance layer is Next's `revalidate`. A
  * global hard ceiling would need a shared store (e.g. Vercel KV).
+ *
+ * Callers can opt out of the durable layer with `cache: "no-store"` when
+ * first-load freshness matters more than cross-instance reuse — the forecast does
+ * this so a visit after an idle gap never gets a stale-while-revalidate snapshot;
+ * the per-instance memo then becomes the (hard-TTL, synchronous) freshness guard.
  */
 
 export const MINUTE = 60_000;
@@ -48,14 +53,23 @@ interface CachedFetchOptions<T> {
   /** Memo key — usually the request URL. */
   key: string;
   url: string;
-  /** Next durable cache window, seconds. */
-  revalidate: number;
+  /** Next durable cache window, seconds. Required unless {@link cache} is set. */
+  revalidate?: number;
   /** Per-instance memo TTL, ms. */
   memoTtlMs: number;
   /** Circuit breaker (see {@link createLimiter}). */
   limiter: () => boolean;
   /** Map the parsed JSON into the value to cache and return. */
   transform: (json: unknown) => T;
+  /**
+   * Per-call fetch cache mode. Default (unset) uses Next's durable, cross-instance
+   * `revalidate` cache. Pass `"no-store"` to bypass it so a memo miss always hits
+   * the network — the per-instance memo + limiter still apply, but the data is
+   * never served stale-while-revalidate. Use it where first-load freshness matters
+   * more than cross-instance reuse (the forecast); keep the durable cache for
+   * slow-moving data (geocoding).
+   */
+  cache?: RequestCache;
 }
 
 const memo = new Map<string, { value: unknown; expires: number }>();
@@ -81,7 +95,13 @@ export async function cachedFetch<T>(opts: CachedFetchOptions<T>): Promise<T | n
 
   if (!opts.limiter()) return null;
 
-  const res = await fetch(opts.url, { next: { revalidate: opts.revalidate } });
+  // `cache: "no-store"` and `next.revalidate` are mutually exclusive in Next, so
+  // pick one: the durable revalidate cache by default, or a plain network fetch
+  // when the caller opts out (the memo above still collapses repeats).
+  const init: RequestInit = opts.cache
+    ? { cache: opts.cache }
+    : { next: { revalidate: opts.revalidate } };
+  const res = await fetch(opts.url, init);
   if (!res.ok) throw new Error(`Upstream request failed (${res.status})`);
 
   const value = opts.transform(await res.json());

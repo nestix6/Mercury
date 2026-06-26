@@ -68,7 +68,7 @@ weather/page.tsx (Server Component)
 ```
 
 - **Normalize at the boundary, still.** Everything provider-specific (URLs, WMO codes, response shape) lives in `lib/weather` and `lib/geo`; swapping providers is a one-module change and the UI is untouched.
-- **Caching.** Forecasts revalidate every ~15 min; geocoding and reverse geocoding cache ~24 h, so unchanged data is served from cache rather than refetched. Call-volume hardening (cache-key hygiene + circuit breakers) is Phase 5.
+- **Caching.** Geocoding and reverse geocoding cache ~24 h (coordinates don't move); the forecast uses `cache: "no-store"` with a ~5-min per-instance memo as its freshness guard (see Phase 5), so unchanged data is served from the memo rather than refetched, but a visit after an idle gap is never served a stale snapshot. Call-volume hardening (cache-key hygiene + circuit breakers) is Phase 5.
 - **Units are still a render concern.** Live data is metric; `UnitToggle` + `lib/format.ts` convert on the way to the screen. Persisting the choice lands in Phase 6.
 
 ## Phase 5 — Caching & rate limiting
@@ -77,13 +77,13 @@ Tightening the outbound-call surface so unchanged data is never refetched and a 
 
 **What it does, cheapest layer first:**
 
-1. **Next `revalidate`** — the durable, cross-instance cache (forecast ~15 min; geocoding + reverse ~24 h). This already prevents redundant *network* calls; the page re-running per request hits the cache, not the API.
-2. **Per-instance memo** — `cachedFetch` keeps a short in-memory cache keyed by request URL, so repeat lookups skip the fetch entirely.
-3. **Circuit breaker** — `createLimiter` enforces a budget across *multiple windows at once* (e.g. per-minute **and** per-hour). It's charged **only on a cache miss**, so it caps roughly the number of upstream calls rather than penalizing cache hits. When the budget is spent, the call degrades gracefully (sample data + the `offline` disclaimer for weather; a generic "My location" label for reverse geocoding).
+1. **Next `revalidate`** — the durable, cross-instance cache, used for the slow-moving lookups (geocoding + reverse ~24 h). The page re-running per request hits the cache, not the API. The **forecast deliberately opts out** of this layer (`cache: "no-store"`): Next's `revalidate` is *stale-while-revalidate*, so on a low-traffic app the first visit after an idle gap is served the last (possibly hours-old) snapshot while a refresh runs in the background. Bypassing it trades cross-instance reuse — cheap here, given Open-Meteo's generous 5000/hr — for first-load freshness.
+2. **Per-instance memo** — `cachedFetch` keeps a short in-memory cache keyed by request URL, so repeat lookups skip the fetch entirely. For the forecast (no durable layer) this memo *is* the freshness guard: a hard ~5-min TTL that fetches synchronously on a miss, so data is at most ~5 min stale with no stale-first surprise. For geocoding it just collapses bursts on top of the durable cache.
+3. **Circuit breaker** — `createLimiter` enforces a budget across *multiple windows at once* (e.g. per-minute **and** per-hour). It's charged **only on a memo miss** (a real network call), so it caps roughly the number of upstream calls rather than penalizing cache/memo hits. When the budget is spent, the call degrades gracefully (sample data + the `offline` disclaimer for weather; a generic "My location" label for reverse geocoding).
 
 **Cache-key hygiene (the real call-count win):**
 
-- **Coordinates round to ~1.1 km** (2 dp) before the forecast/reverse calls, so GPS jitter and near-identical points collapse onto one cache entry. The forecast caches the *raw* response keyed by coords, applying the display name afterwards — so the same point can carry different labels without a stale-label bug. Rounding also keeps a precise home location out of the URL/history.
+- **Coordinates round to ~111 m** (3 dp) before the forecast/reverse calls, so GPS jitter and near-identical points collapse onto one cache entry. (Originally 2 dp / ~1 km, but that could snap into an adjacent Open-Meteo high-res grid cell reading several °C apart — e.g. Bratislava read ~3 °C hotter — so it was tightened to 3 dp, which still dedupes but stays inside the same cell.) The forecast caches the *raw* response keyed by coords, applying the display name afterwards — so the same point can carry different labels without a stale-label bug. Rounding also keeps a precise home location out of the URL/history.
 - **Query strings are normalized** (trim, lowercase, collapse whitespace) so `"Prague"`, `"prague"`, and `"  Prague  "` share one geocoding entry.
 
 **Honest limits.** The memo and counters are per-instance and reset on cold start — best-effort on serverless. The durable layer is Next's cache; a true global hard ceiling would need a shared store (e.g. Vercel KV), deliberately left out as unnecessary at current scale. Ceilings are set generously (well under Open-Meteo's free 600/min · 5000/hr) so they never trip in normal use — they only catch abuse.

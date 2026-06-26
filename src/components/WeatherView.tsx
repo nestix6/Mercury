@@ -70,8 +70,8 @@ export function WeatherView({
   const handleSelect = useCallback(
     (suggestion: LocationSuggestion) => {
       const params = new URLSearchParams({
-        lat: suggestion.latitude.toFixed(2),
-        lon: suggestion.longitude.toFixed(2),
+        lat: suggestion.latitude.toFixed(3),
+        lon: suggestion.longitude.toFixed(3),
         name: suggestion.name,
       });
       if (suggestion.region) params.set("region", suggestion.region);
@@ -82,11 +82,12 @@ export function WeatherView({
 
   const goToCoords = useCallback(
     (coords: Coords, mode: "push" | "replace" = "push") => {
-      // 2 dp (~1.1 km) is plenty for a forecast and keeps a precise home
-      // location out of the URL/history; the server rounds again defensively.
+      // 3 dp (~111 m) keeps a precise home location out of the URL/history while
+      // still resolving the right Open-Meteo grid cell; the server rounds again
+      // defensively. (2 dp could snap to an adjacent cell reading several °C off.)
       const url = `/weather?lat=${coords.latitude.toFixed(
-        2,
-      )}&lon=${coords.longitude.toFixed(2)}`;
+        3,
+      )}&lon=${coords.longitude.toFixed(3)}`;
       if (mode === "replace") router.replace(url);
       else router.push(url);
     },
