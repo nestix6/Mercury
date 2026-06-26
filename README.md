@@ -10,7 +10,7 @@ A fast, clean weather app. Search a location (or use geolocation) and see curren
 - **The forecast.** Current conditions (with feels-like and high/low), an 8-tile conditions grid, a keyboard-scrollable 24-hour strip, and a 7-day forecast — over a floating liquid-glass UI.
 - **°C / °F, persisted.** The unit toggle converts live and remembers your choice, read server-side so the first paint already shows the right unit (no flash).
 - **Honest when data is missing.** If Open-Meteo is unreachable or a place isn't found, the view falls back to a sample snapshot behind a clear disclaimer, so it's never mistaken for real conditions.
-- **Calm, accessible, fast.** A dark, theme-locked UI with an animated liquid-mercury WebGL landing; keyboard-operable controls with visible focus, and full `prefers-reduced-motion` / `prefers-reduced-transparency` fallbacks.
+- **Calm, accessible, responsive.** A dark, theme-locked UI with an animated liquid-mercury WebGL landing; keyboard-operable controls with visible focus, full `prefers-reduced-motion` / `prefers-reduced-transparency` fallbacks, and a layout that reflows cleanly from desktop down to mobile.
 
 ## Code structure
 
@@ -54,6 +54,19 @@ src/
    ├─ useGeolocation.ts    # permission-gated browser geolocation
    ├─ useUnits.ts          # cookie-persisted °C/°F choice
    └─ useLocationSearch.ts # debounced search autocomplete
+
+tests/                     # Vitest (jsdom): mirrors src/ — pure-logic units,
+                           # the provider adapter, the useGeolocation flow,
+                           # and component tests of the forecast views
+```
+
+## Develop
+
+```bash
+npm run dev      # dev server (Turbopack) → http://localhost:3000
+npm run build    # production build
+npm run lint     # ESLint (core-web-vitals + typescript)
+npm test         # Vitest (one run); npm run test:watch to watch
 ```
 
 ## Learn more
