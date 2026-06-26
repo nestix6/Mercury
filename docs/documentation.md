@@ -147,10 +147,11 @@ Standing up a test runner and a first suite — unit tests over the pure logic p
   - `units` / `location-store` — the cookie parsers (validation + serialize/parse round-trip, out-of-range/non-finite/wrong-type rejection).
   - `outbound` — the `createLimiter` budget (per-window limits, multi-window rejection, reset after the window elapses, zero-limit), driven with fake timers.
   - `weather/provider` — adapter normalization, tested through the public `getWeatherByCoords` / `getWeatherByQuery` by mocking `cachedFetch` so the network never runs. Verifies the compass mapping, m→km visibility, `pressure_msl` preference, hourly alignment to "Now", "Today" labelling, and `describeRegion`.
+  - `useGeolocation` — the permission flow (`renderHook`), stubbing `navigator.geolocation`: idle → locating, the success path forwarding coords, `PERMISSION_DENIED` → `denied`, any other error → `error`, the missing-API `unavailable` branch, and the low-accuracy/timeout options handed to the browser.
   - **Why mock at `cachedFetch`, not deeper.** It keeps the provider's internals (`normalize`, `toCompass`, time slicing) private while still exercising them end-to-end through the boundary — consistent with "normalize at the boundary".
 - **Component coverage.** The four forecast views render against the `MOCK_WEATHER` snapshot with React Testing Library:
   - `CurrentConditions` — place/time/condition text and metric **and** imperial temperatures (so the conversion path is covered, not just passthrough).
   - `DetailsGrid` — all eight tiles, their values/descriptors, and imperial conversions (mph / mi / inHg).
   - `HourlyStrip` — "Now" label, one tile per hour, and the keyboard scroller (`ArrowRight` → `scrollBy`, with `matchMedia` + `scrollBy`/`scrollTo` stubbed since jsdom implements none of them).
   - `DailyForecast` — seven rows, "Today" + weekday labels, high/low, and the ≥20 % precipitation threshold (lower values stay hidden).
-- **Still manual.** Geolocation permission flows (granted / denied / unavailable) are verified by hand — they hinge on the browser's permission prompt.
+- **Still manual.** The end-to-end browser permission prompt itself (the native granted/denied dialog) is verified by hand; the hook's handling of each outcome is now unit-tested (see `useGeolocation` above).
