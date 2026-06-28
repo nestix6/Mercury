@@ -4,16 +4,18 @@ import { useCallback, useEffect, useState } from "react";
 import { WarningCircle } from "@phosphor-icons/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { BookmarksMenu } from "@/components/BookmarksMenu";
 import { CurrentConditions } from "@/components/CurrentConditions";
 import { DailyForecast } from "@/components/DailyForecast";
 import { DetailsGrid } from "@/components/DetailsGrid";
 import { HourlyStrip } from "@/components/HourlyStrip";
 import { LocationSearch } from "@/components/LocationSearch";
 import { UnitToggle } from "@/components/UnitToggle";
+import { useBookmarks } from "@/hooks/useBookmarks";
 import { useGeolocation, type Coords } from "@/hooks/useGeolocation";
 import { useLocationSearch } from "@/hooks/useLocationSearch";
 import { useUnits } from "@/hooks/useUnits";
-import { writeGeoAsked, writePlace } from "@/lib/location-store";
+import { writeGeoAsked, writePlace, type StoredPlace } from "@/lib/location-store";
 import type { LocationSuggestion } from "@/lib/weather";
 import type { Units, WeatherSnapshot } from "@/lib/weather/types";
 
@@ -61,23 +63,42 @@ export function WeatherView({
   const router = useRouter();
   const { status, locate } = useGeolocation();
   const { suggestions, loading: searching } = useLocationSearch(query);
+  const { bookmarks, has, toggle, remove } = useBookmarks();
   const { location, current, hourly, daily } = data;
   const geoHint = geoHintFor(status);
 
-  // A picked candidate already carries its coords + label, so navigate straight
-  // to that place (no re-geocode) and pass the label through the URL so the
-  // server skips reverse geocoding.
-  const handleSelect = useCallback(
-    (suggestion: LocationSuggestion) => {
+  const currentPlace: StoredPlace = {
+    lat: location.latitude,
+    lon: location.longitude,
+    name: location.name,
+    region: location.region,
+  };
+
+  // Navigate to a place that already carries its coords + label (a picked
+  // suggestion or a bookmark): straight to that place, no re-geocode, with the
+  // label passed through the URL so the server skips reverse geocoding.
+  const goToPlace = useCallback(
+    (place: StoredPlace) => {
       const params = new URLSearchParams({
-        lat: suggestion.latitude.toFixed(3),
-        lon: suggestion.longitude.toFixed(3),
-        name: suggestion.name,
+        lat: place.lat.toFixed(3),
+        lon: place.lon.toFixed(3),
+        name: place.name,
       });
-      if (suggestion.region) params.set("region", suggestion.region);
+      if (place.region) params.set("region", place.region);
       router.push(`/weather?${params}`);
     },
     [router],
+  );
+
+  const handleSelect = useCallback(
+    (suggestion: LocationSuggestion) =>
+      goToPlace({
+        lat: suggestion.latitude,
+        lon: suggestion.longitude,
+        name: suggestion.name,
+        region: suggestion.region,
+      }),
+    [goToPlace],
   );
 
   const goToCoords = useCallback(
@@ -153,6 +174,11 @@ export function WeatherView({
                   locating={status === "locating"}
                 />
               </div>
+              <BookmarksMenu
+                bookmarks={bookmarks}
+                onSelect={goToPlace}
+                onRemove={remove}
+              />
               <UnitToggle value={units} onChange={setUnits} />
             </div>
             <div className="mt-3 sm:hidden">
@@ -190,6 +216,8 @@ export function WeatherView({
             current={current}
             location={location}
             units={units}
+            isBookmarked={has(currentPlace)}
+            onToggleBookmark={() => toggle(currentPlace)}
           />
           <DetailsGrid current={current} units={units} />
           <HourlyStrip hours={hourly} units={units} />

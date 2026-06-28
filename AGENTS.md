@@ -61,10 +61,10 @@ src/
 │     └─ loading.tsx                     # route-level skeleton
 ├─ components/
 │  ├─ MercuryField.tsx, MercuryBlob.tsx, mercury-shaders.ts     # liquid-mercury bg
-│  ├─ WeatherView.tsx                    # "use client" shell (units/search/geolocation, layout)
+│  ├─ WeatherView.tsx                    # "use client" shell (units/search/geolocation/bookmarks, layout)
 │  ├─ CurrentConditions, DetailsGrid, DailyForecast              # presentational
 │  ├─ HourlyStrip.tsx                    # "use client" (keyboard-scrollable strip)
-│  ├─ LocationSearch.tsx, UnitToggle.tsx # "use client" interactive leaves
+│  ├─ LocationSearch.tsx, UnitToggle.tsx, BookmarksMenu.tsx # "use client" interactive leaves
 │  └─ WeatherIcon.tsx                    # condition → Phosphor glyph
 ├─ lib/
 │  ├─ weather/  index.ts (public interface), provider.ts (Open-Meteo adapter),
@@ -74,13 +74,14 @@ src/
 │  ├─ outbound.ts                        # shared cachedFetch + multi-window rate limiter (all 3 APIs)
 │  ├─ format.ts                          # temp/wind/visibility/pressure + unit conversion
 │  ├─ units.ts                           # unit cookie name + parser (shared by server + client)
-│  └─ location-store.ts                  # remembered-location cookies (parse/serialize/write)
-└─ hooks/  useMercuryCanvas.ts (WebGL setup), useGeolocation.ts (permission-gated coords), useUnits.ts (cookie-persisted °C/°F), useLocationSearch.ts (debounced search autocomplete)
+│  ├─ location-store.ts                  # remembered-location cookies (parse/serialize/write)
+│  └─ bookmark-store.ts                  # saved-locations list in localStorage (read/write/placeKey)
+└─ hooks/  useMercuryCanvas.ts (WebGL setup), useGeolocation.ts (permission-gated coords), useUnits.ts (cookie-persisted °C/°F), useLocationSearch.ts (debounced search autocomplete), useBookmarks.ts (localStorage saved locations)
 public/   static assets
 docs/     documentation.md
 ```
 
-Scope notes: the MVP and the planned Phase-2 polish are all shipped. **Favorites/saved locations are out of scope** (deliberately dropped). The app is **dark-theme only** by design — no light theme / system-preference switching. A Route Handler (`app/api/.../route.ts`) is only needed if a keyed provider is ever added — Open-Meteo and BigDataCloud need none.
+Scope notes: the MVP and the planned Phase-2 polish are all shipped, plus **bookmarks** (saved locations — see **Weather view** → `BookmarksMenu`). The app is **dark-theme only** by design — no light theme / system-preference switching. A Route Handler (`app/api/.../route.ts`) is only needed if a keyed provider is ever added — Open-Meteo and BigDataCloud need none.
 
 ## Landing & 404
 
@@ -95,12 +96,13 @@ Keep the WebGL/animation work isolated in client leaves; the pages themselves st
 
 The main app view lives at `src/app/weather/page.tsx` (route `/weather`). The Server Component resolves a normalized `WeatherSnapshot` from **live Open-Meteo data** (via `src/lib/weather`) and hands it to **`WeatherView`** (`"use client"`), which owns the unit + search state and composes the presentational pieces. Entry points: `?q=<place>` (search), `?lat&lon` ("use my location" / a picked search result), or neither — the bare view restores the **last remembered location** (3B) and otherwise falls back to **Prague**. Any provider error or unfound place falls back to the sample snapshot, flagged so the UI shows a disclaimer instead of passing it off as real.
 
-- **`CurrentConditions`** — location, local time, the big chrome temperature, condition, feels-like, H/L.
+- **`CurrentConditions`** — location, local time, the big chrome temperature, condition, feels-like, H/L. A bookmark toggle beside the place name saves/unsaves the current location (filled when saved).
 - **`DetailsGrid`** — 8 liquid-glass stat tiles (feels-like, wind, humidity, UV, visibility, pressure, sunrise, sunset).
 - **`HourlyStrip`** — horizontal scroll-snap of the next 24 hours; a small `"use client"` leaf so it's keyboard-operable (focusable scroller, Arrow/Home/End to scroll, smooth scroll dropped under reduced-motion).
 - **`DailyForecast`** — 7 rows with per-day temperature range bars scaled to the week's min/max.
 - **`LocationSearch`** — an ARIA combobox with a debounced autocomplete: as you type it lists candidate places (so "Paris"/"Springfield" disambiguate). Picking one navigates to `/weather?lat&lon&name&region` — the server uses that label directly and skips reverse geocoding, loading the exact place with no re-geocode. Pressing Enter with nothing highlighted falls back to `/weather?q=…`. The pin button runs the `useGeolocation` flow (owned by `WeatherView`) and navigates to `/weather?lat&lon` on success. A denied/unavailable/failed geolocation attempt shows an inline hint under the nav instead of failing silently. **Remembered location (3B):** any user-resolved live view (geolocation, a picked suggestion, or a `?q=` search) writes a `mercury-place` cookie via `src/lib/location-store.ts`, so a return to the bare `/weather` restores it instead of Prague; a `mercury-geo-asked` cookie stops the auto-prompt from firing on every visit (only a first-ever bare visit prompts — after that the pin button is the way in). `WeatherLocation` now carries `latitude`/`longitude` so a live snapshot is enough to remember. `UnitToggle` drives live °C/°F conversion, persisted in a cookie (`useUnits`) and read server-side so the first paint already shows the saved unit (no flash).
 - **Autocomplete data flow.** The suggestion fetch is a Server Action (`src/lib/weather/actions.ts`, `searchLocationsAction`) wrapping `searchSuggestions` in `provider.ts` — no public route handler, provider specifics stay server-side. It's driven by `useLocationSearch` (`src/hooks/`), owned by `WeatherView` so one debounced fetch serves both responsive `LocationSearch` slots.
+- **`BookmarksMenu` (bookmarks).** A "Saved" dropdown in the nav lists saved locations (`.glass-dark`, styled like the suggestions); clicking a row navigates to it (the shared `goToPlace` → `/weather?lat&lon&name&region`, no re-geocode), and a per-row × removes it. The list is owned by **`useBookmarks`** (`src/hooks/`) and persisted in **localStorage** via `src/lib/bookmark-store.ts` — deliberately *not* a cookie: bookmarks never influence the server-rendered first paint (unlike units / remembered-location), and a growing list shouldn't ride along on every request. It starts empty and hydrates after mount (so SSR and the first client render agree). A bookmark stores only a place's identity (`{ lat, lon, name, region }`, the same `StoredPlace` shape as the remembered location) — never weather data, which would go stale; identity/dedup is by rounded coords (`placeKey`).
 
 Data flow: `page.tsx` calls `getWeatherByQuery` / `getWeatherByCoords` from `src/lib/weather` (public interface in `index.ts`; the Open-Meteo adapter + normalization in `provider.ts`; WMO weather-code → our `Condition` in `wmo.ts`). The "use my location" path also calls `reverseGeocode` from `src/lib/geo` for the place name. Models + formatting: `types.ts` (normalized model), `mock.ts` (sample fallback, same shape), `format.ts` (temp/wind/visibility/pressure + metric/imperial). Icons come from Phosphor via **`WeatherIcon`** (condition + day/night → one glyph). Numbers render in Geist Mono; the rest is Bricolage Grotesque.
 
@@ -110,7 +112,7 @@ Glass utilities (`globals.css`): **`.glass-dark`** (the floating dynamic-island 
 
 ## Status
 
-**Everything is shipped** — all phases through Phase 11 are done. The app is a dark liquid-mercury landing at `/`, a matching custom 404 (see **Landing & 404**), and the main weather view at `/weather` (see **Weather view**) running on **live Open-Meteo data**, with persistence, caching/rate-limit hardening, accessibility, mobile responsiveness, and a Vitest suite on top.
+**Everything is shipped** — all phases through Phase 12 are done. The app is a dark liquid-mercury landing at `/`, a matching custom 404 (see **Landing & 404**), and the main weather view at `/weather` (see **Weather view**) running on **live Open-Meteo data**, with persistence, bookmarks, caching/rate-limit hardening, accessibility, mobile responsiveness, and a Vitest suite on top.
 
 Done, by phase (`docs/documentation.md` has the full phase-by-phase tour):
 
@@ -123,4 +125,5 @@ Done, by phase (`docs/documentation.md` has the full phase-by-phase tour):
 - **8 — Remember the last location:** the bare `/weather` restores the last user-resolved location (`mercury-place` cookie) instead of Prague, and stops auto-prompting for geolocation on every visit (`mercury-geo-asked`); coords now ride along in `WeatherLocation`. See **Weather view** → `LocationSearch`.
 - **9 — Accessibility pass:** keyboard-operable hourly strip (`HourlyStrip` is now `"use client"`), a shared `:focus-visible` ring in `globals.css`, and contrast bumps (`zinc-500` → `zinc-400` on the daily low / tile detail / footer). The first-visit geolocation auto-prompt was kept (already once-only after Phase 8).
 - **10 — Mobile responsiveness:** the weather view and landing reflow cleanly on small screens.
-- **11 — Tests (Vitest + jsdom):** unit suites over the pure logic — `format`, `wmo`, `units`, `location-store`, the `createLimiter` budget, the provider adapter normalization (mocking `cachedFetch`), and the `useGeolocation` permission flow — plus component tests of the forecast views (`CurrentConditions`, `DetailsGrid`, `HourlyStrip`, `DailyForecast`) against `MOCK_WEATHER`. Run with `npm test`. See **Commands**.
+- **11 — Tests (Vitest + jsdom):** unit suites over the pure logic — `format`, `wmo`, `units`, `location-store`, `bookmark-store`, the `createLimiter` budget, the provider adapter normalization (mocking `cachedFetch`), and the `useGeolocation` / `useBookmarks` hooks — plus component tests of the forecast views (`CurrentConditions`, `DetailsGrid`, `HourlyStrip`, `DailyForecast`) against `MOCK_WEATHER`. Run with `npm test`. See **Commands**.
+- **12 — Bookmarks (saved locations):** a "Saved" dropdown (`BookmarksMenu`) in the nav and a bookmark toggle in `CurrentConditions`, backed by a localStorage list (`useBookmarks` + `src/lib/bookmark-store.ts`). Stores only place identity, navigates via the shared `goToPlace`. Deliberately localStorage, not a cookie (doesn't affect first paint; shouldn't grow the request). See **Weather view** → `BookmarksMenu`.

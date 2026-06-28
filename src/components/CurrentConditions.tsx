@@ -1,4 +1,4 @@
-import { MapPin } from "@phosphor-icons/react";
+import { Bookmark, MapPin } from "@phosphor-icons/react";
 import { WeatherIcon } from "@/components/WeatherIcon";
 import { formatTemp } from "@/lib/format";
 import type {
@@ -11,9 +11,19 @@ interface Props {
   current: Current;
   location: WeatherLocation;
   units: Units;
+  /** Whether this location is saved. Omit to hide the bookmark control. */
+  isBookmarked?: boolean;
+  /** Save/unsave this location. Omit to hide the bookmark control. */
+  onToggleBookmark?: () => void;
 }
 
-export function CurrentConditions({ current, location, units }: Props) {
+export function CurrentConditions({
+  current,
+  location,
+  units,
+  isBookmarked,
+  onToggleBookmark,
+}: Props) {
   return (
     <section className="animate-rise [animation-delay:80ms]">
       <div className="flex items-center gap-2 text-zinc-400">
@@ -21,6 +31,22 @@ export function CurrentConditions({ current, location, units }: Props) {
         <span className="text-sm font-medium tracking-wide text-zinc-200">
           {location.name}, {location.region}
         </span>
+        {onToggleBookmark ? (
+          <button
+            type="button"
+            onClick={onToggleBookmark}
+            aria-pressed={isBookmarked}
+            aria-label={isBookmarked ? "Remove bookmark" : "Save location"}
+            title={isBookmarked ? "Remove bookmark" : "Save location"}
+            className="rounded-full p-1 text-zinc-400 transition-colors hover:bg-white/10 hover:text-zinc-100 active:scale-95"
+          >
+            <Bookmark
+              weight={isBookmarked ? "fill" : "light"}
+              className={`size-4 ${isBookmarked ? "text-zinc-100" : ""}`}
+              aria-hidden="true"
+            />
+          </button>
+        ) : null}
       </div>
       <p className="mt-1 text-sm text-zinc-500">{location.localTime}</p>
 
