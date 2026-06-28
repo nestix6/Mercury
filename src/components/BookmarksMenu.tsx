@@ -31,7 +31,7 @@ export function BookmarksMenu({ bookmarks, onSelect, onRemove }: Props) {
 
   return (
     <div
-      className="relative shrink-0"
+      className="shrink-0"
       onBlur={(event) => {
         // Close only when focus leaves the whole menu (not row-to-row).
         if (!event.currentTarget.contains(event.relatedTarget as Node)) {
@@ -60,7 +60,11 @@ export function BookmarksMenu({ bookmarks, onSelect, onRemove }: Props) {
           id={listId}
           role="listbox"
           aria-label="Saved locations"
-          className="glass-dark absolute top-full right-0 z-40 mt-2 max-h-72 w-64 overflow-y-auto rounded-2xl p-1.5"
+          // Anchored to the nav (positioned ancestor). On mobile it drops as a
+          // full-width panel under the navbar — like the search suggestions —
+          // so it never spills off a narrow screen; on desktop it's a narrow
+          // right-aligned menu by the button.
+          className="glass-dark absolute top-full right-0 left-0 z-40 mt-2 max-h-72 overflow-y-auto rounded-2xl p-1.5 sm:left-auto sm:w-72"
         >
           {bookmarks.length === 0 ? (
             <li className="px-3 py-2 text-sm text-zinc-400">

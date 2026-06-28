@@ -21,11 +21,21 @@ export default function Loading() {
               <span className="text-chrome shrink-0 text-xl font-semibold tracking-tight">
                 Mercury
               </span>
-              <Block className="hidden h-10 flex-1 rounded-full sm:block" />
+              {/* Desktop search: input + geolocation pin. */}
+              <div className="hidden min-w-0 flex-1 items-center gap-2 sm:flex">
+                <Block className="h-10 flex-1 rounded-full" />
+                <Block className="size-10 shrink-0 rounded-full" />
+              </div>
+              {/* Bookmarks button. */}
               <Block className="size-10 shrink-0 rounded-full" />
+              {/* Unit toggle. */}
               <Block className="h-9 w-20 shrink-0 rounded-full" />
             </div>
-            <Block className="mt-3 h-10 w-full rounded-full sm:hidden" />
+            {/* Mobile search row: input + geolocation pin. */}
+            <div className="mt-3 flex items-center gap-2 sm:hidden">
+              <Block className="h-10 flex-1 rounded-full" />
+              <Block className="size-10 shrink-0 rounded-full" />
+            </div>
           </nav>
         </div>
       </header>

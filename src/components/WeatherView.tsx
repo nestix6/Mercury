@@ -155,7 +155,7 @@ export function WeatherView({
 
       <header className="sticky top-0 z-30 pt-4">
         <div className="mx-auto w-full max-w-5xl px-5 sm:px-8">
-          <nav className="glass-dark w-full rounded-3xl px-4 py-2 sm:px-6 sm:py-2.5">
+          <nav className="glass-dark relative w-full rounded-3xl px-4 py-2 sm:px-6 sm:py-2.5">
             <div className="flex items-center gap-4">
               <Link
                 href="/"
