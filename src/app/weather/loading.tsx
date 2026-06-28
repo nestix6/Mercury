@@ -22,6 +22,7 @@ export default function Loading() {
                 Mercury
               </span>
               <Block className="hidden h-10 flex-1 rounded-full sm:block" />
+              <Block className="size-10 shrink-0 rounded-full" />
               <Block className="h-9 w-20 shrink-0 rounded-full" />
             </div>
             <Block className="mt-3 h-10 w-full rounded-full sm:hidden" />
